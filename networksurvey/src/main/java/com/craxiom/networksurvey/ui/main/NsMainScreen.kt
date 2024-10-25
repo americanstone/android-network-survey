@@ -29,7 +29,7 @@ import com.craxiom.networksurvey.util.NsTheme
 
 @Composable
 fun MainCompose(
-    navController: NavHostController = rememberNavController(),
+    mainNavController: NavHostController = rememberNavController(),
     drawerState: DrawerState = rememberDrawerState(initialValue = DrawerValue.Closed),
     appVersion: String
 ) {
@@ -41,7 +41,7 @@ fun MainCompose(
     LaunchedEffect(viewModel.navigateToQrCodeScanner) {
         viewModel.navigateToQrCodeScanner.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
-                navController.navigate(NavOption.QrCodeScanner.name)
+                mainNavController.navigate(NavOption.QrCodeScanner.name)
                 viewModel.resetNavigationFlag()
             }
         }
@@ -50,7 +50,7 @@ fun MainCompose(
     LaunchedEffect(viewModel.navigateToQrCodeShare) {
         viewModel.navigateToQrCodeShare.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
-                navController.navigate(NavOption.QrCodeShare.name)
+                mainNavController.navigate(NavOption.QrCodeShare.name)
                 viewModel.resetNavigationFlag()
             }
         }
@@ -59,7 +59,7 @@ fun MainCompose(
     LaunchedEffect(viewModel.navigateToTowerMap) {
         viewModel.navigateToTowerMap.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
-                navController.navigate(NavOption.TowerMap.name)
+                mainNavController.navigate(NavOption.TowerMap.name)
                 viewModel.resetNavigationFlag()
             }
         }
@@ -68,7 +68,7 @@ fun MainCompose(
     LaunchedEffect(viewModel.navigateToWifiSpectrum) {
         viewModel.navigateToWifiSpectrum.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
-                navController.navigate(NavOption.WifiSpectrum.name)
+                mainNavController.navigate(NavOption.WifiSpectrum.name)
                 viewModel.resetNavigationFlag()
             }
         }
@@ -77,7 +77,7 @@ fun MainCompose(
     LaunchedEffect(viewModel.navigateToWifiDetails) {
         viewModel.navigateToWifiDetails.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
-                navController.navigate(NavOption.WifiDetails.name)
+                mainNavController.navigate(NavOption.WifiDetails.name)
                 viewModel.resetNavigationFlag()
             }
         }
@@ -86,7 +86,7 @@ fun MainCompose(
     LaunchedEffect(viewModel.navigateToBluetooth) {
         viewModel.navigateToBluetooth.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
-                navController.navigate(NavOption.BluetoothDetails.name)
+                mainNavController.navigate(NavOption.BluetoothDetails.name)
                 viewModel.resetNavigationFlag()
             }
         }
@@ -106,31 +106,31 @@ fun MainCompose(
                     ) { onUserPickedOption ->
                         when (onUserPickedOption) {
                             NavDrawerOption.None -> {
-                                navController.navigate(onUserPickedOption.name) {
+                                mainNavController.navigate(onUserPickedOption.name) {
                                     popUpTo(NavDrawerOption.None.name)
                                 }
                             }
 
                             NavDrawerOption.ServerConnection -> {
-                                navController.navigate(onUserPickedOption.name) {
+                                mainNavController.navigate(onUserPickedOption.name) {
                                     popUpTo(NavDrawerOption.None.name)
                                 }
                             }
 
                             NavDrawerOption.MqttBrokerConnection -> {
-                                navController.navigate(onUserPickedOption.name) {
+                                mainNavController.navigate(onUserPickedOption.name) {
                                     popUpTo(NavDrawerOption.None.name)
                                 }
                             }
 
                             NavDrawerOption.CellularCalculators -> {
-                                navController.navigate(onUserPickedOption.name) {
+                                mainNavController.navigate(onUserPickedOption.name) {
                                     popUpTo(NavDrawerOption.None.name)
                                 }
                             }
 
                             NavDrawerOption.Settings -> {
-                                navController.navigate(onUserPickedOption.name) {
+                                mainNavController.navigate(onUserPickedOption.name) {
                                     popUpTo(NavDrawerOption.None.name)
                                 }
                             }
@@ -171,10 +171,13 @@ fun MainCompose(
                 }
             ) {
                 NavHost(
-                    navController,
+                    mainNavController,
                     startDestination = NavRoutes.MainRoute.name
                 ) {
-                    mainGraph(drawerState, paddingValues = paddingValues)
+                    mainGraph(
+                        drawerState, paddingValues = paddingValues,
+                        mainNavController = mainNavController
+                    )
                 }
             }
         }

@@ -34,37 +34,51 @@ import com.craxiom.networksurvey.fragments.MainCellularFragment
 import com.craxiom.networksurvey.fragments.MainGnssFragment
 import com.craxiom.networksurvey.fragments.WifiNetworksFragment
 import com.craxiom.networksurvey.ui.main.appbar.AppBar
+import com.craxiom.networksurvey.ui.main.appbar.AppBarAction
+import com.craxiom.networksurvey.ui.main.appdrawer.NavOption
 
 @Composable
 fun HomeScreen(
-    drawerState: DrawerState
+    drawerState: DrawerState,
+    mainNavController: NavHostController
 ) {
-    val navController: NavHostController = rememberNavController()
+    val bottomNavController: NavHostController = rememberNavController()
+    var currentScreen by remember { mutableStateOf<MainScreens>(MainScreens.Dashboard) }
 
     Scaffold(
-        topBar = { AppBar(drawerState = drawerState) },
+        topBar = {
+            AppBar(
+                drawerState = drawerState,
+                appBarActions = getAppBarActions(currentScreen, mainNavController)
+            )
+        },
         bottomBar = {
-            BottomNavigationBar(navController)
+            BottomNavigationBar(bottomNavController)
         },
     ) { padding ->
         NavHost(
-            navController,
+            bottomNavController,
             startDestination = MainScreens.Dashboard.route,
             modifier = Modifier.padding(paddingValues = padding)
         ) {
             composable(MainScreens.Dashboard.route) {
+                currentScreen = MainScreens.Dashboard
                 DashboardFragmentInCompose()
             }
             composable(MainScreens.Cellular.route) {
+                currentScreen = MainScreens.Cellular
                 CellularFragmentInCompose()
             }
             composable(MainScreens.Wifi.route) {
+                currentScreen = MainScreens.Wifi
                 WifiFragmentInCompose()
             }
             composable(MainScreens.Bluetooth.route) {
+                currentScreen = MainScreens.Bluetooth
                 BluetoothFragmentInCompose()
             }
             composable(MainScreens.Gnss.route) {
+                currentScreen = MainScreens.Gnss
                 GnssFragmentInCompose()
             }
         }
@@ -105,6 +119,50 @@ fun BottomNavigationBar(navController: NavController) {
                 }
             )
         }
+    }
+}
+
+@Composable
+fun getAppBarActions(currentScreen: MainScreens, navController: NavController): List<AppBarAction> {
+    return when (currentScreen) {
+        MainScreens.Cellular -> listOf(
+            AppBarAction(
+                icon = android.R.drawable.ic_dialog_map,
+                description = R.string.open_tower_map,
+                onClick = {
+                    navController.navigate(NavOption.TowerMap.name)
+                }
+            )
+        )
+
+        MainScreens.Wifi -> listOf(
+            AppBarAction(
+                icon = R.drawable.ic_spectrum_chart,
+                description = R.string.open_wifi_spectrum,
+                onClick = {
+                    // TODO Navigate to WiFi Spectrum Fragment
+                }
+            )
+        )
+
+        MainScreens.Gnss -> listOf(
+            AppBarAction(
+                icon = R.drawable.ic_sort,
+                description = R.string.menu_option_sort_by,
+                onClick = {
+                    // TODO Finish me
+                }
+            ),
+            AppBarAction(
+                icon = R.drawable.ic_filter,
+                description = R.string.menu_option_filter_content_description,
+                onClick = {
+                    // TODO Finish me
+                }
+            )
+        )
+
+        else -> emptyList()
     }
 }
 

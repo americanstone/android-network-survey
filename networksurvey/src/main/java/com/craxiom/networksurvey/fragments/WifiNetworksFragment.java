@@ -26,9 +26,7 @@ import androidx.core.view.MenuProvider;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelStoreOwner;
 import androidx.navigation.Navigation;
-import androidx.navigation.fragment.NavHostFragment;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.SortedList;
@@ -97,9 +95,7 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
     {
         binding = FragmentWifiNetworksListBinding.inflate(inflater);
 
-        final ViewModelStoreOwner viewModelStoreOwner = NavHostFragment.findNavController(this).getViewModelStoreOwner(R.id.nav_graph);
-        final ViewModelProvider viewModelProvider = new ViewModelProvider(viewModelStoreOwner);
-        viewModel = viewModelProvider.get(getClass().getName(), WifiViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity()).get(WifiViewModel.class);
 
         binding.setVm(viewModel);
 

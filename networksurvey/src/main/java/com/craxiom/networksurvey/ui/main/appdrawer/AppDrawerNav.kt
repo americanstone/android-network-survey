@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidViewBinding
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
@@ -31,17 +32,19 @@ import com.craxiom.networksurvey.ui.main.NavRoutes
 
 fun NavGraphBuilder.mainGraph(
     drawerState: DrawerState,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    mainNavController: NavHostController
 ) {
     navigation(startDestination = NavDrawerOption.None.name, route = NavRoutes.MainRoute.name) {
         // TODO Need to add a header like the old display for all of these
         composable(NavDrawerOption.None.name) {
-            HomeScreen(drawerState)
+            HomeScreen(drawerState, mainNavController = mainNavController)
         }
 
         composable(NavDrawerOption.ServerConnection.name) {
             GrpcFragmentInCompose(paddingValues)
         }
+
         composable(
             route = "${NavDrawerOption.MqttBrokerConnection.name}?${MqttConnectionSettings.KEY}={mqttConnectionSettings}",
             arguments = listOf(navArgument("mqttConnectionSettings") {
