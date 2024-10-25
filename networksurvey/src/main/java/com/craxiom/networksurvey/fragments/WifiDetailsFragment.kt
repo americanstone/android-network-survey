@@ -9,7 +9,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import androidx.preference.PreferenceManager
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants
 import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener
@@ -27,7 +26,7 @@ import timber.log.Timber
  * The fragment that displays the details of a single Wifi network from the scan results.
  */
 class WifiDetailsFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
-    private lateinit var wifiNetwork: WifiNetwork
+    private var wifiNetwork: WifiNetwork? = null
     private lateinit var viewModel: WifiDetailsViewModel
 
     private lateinit var sharedPreferences: SharedPreferences
@@ -56,20 +55,19 @@ class WifiDetailsFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val args: WifiDetailsFragmentArgs by navArgs()
-        wifiNetwork = args.wifiNetwork
-
         val composeView = ComposeView(requireContext())
 
         composeView.apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 viewModel = viewModel()
-                viewModel.wifiNetwork = wifiNetwork
-                if (wifiNetwork.signalStrength == null) {
-                    viewModel.addInitialRssi(UNKNOWN_RSSI)
-                } else {
-                    viewModel.addInitialRssi(wifiNetwork.signalStrength!!)
+                if (wifiNetwork != null) {
+                    viewModel.wifiNetwork = wifiNetwork!!
+                    if (wifiNetwork!!.signalStrength == null) {
+                        viewModel.addInitialRssi(UNKNOWN_RSSI)
+                    } else {
+                        viewModel.addInitialRssi(wifiNetwork!!.signalStrength!!)
+                    }
                 }
 
                 sharedPreferences.registerOnSharedPreferenceChangeListener(
@@ -124,10 +122,10 @@ class WifiDetailsFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
 
     override fun onWifiBeaconSurveyRecords(wifiBeaconRecords: MutableList<WifiRecordWrapper>?) {
         val matchedWifiRecordWrapper =
-            wifiBeaconRecords?.find { it.wifiBeaconRecord.data.bssid.equals(wifiNetwork.bssid) }
+            wifiBeaconRecords?.find { it.wifiBeaconRecord.data.bssid.equals(wifiNetwork?.bssid) }
 
         if (matchedWifiRecordWrapper == null) {
-            Timber.i("No wifi record found for ${wifiNetwork.bssid} in the wifi scan results")
+            Timber.i("No wifi record found for ${wifiNetwork?.bssid} in the wifi scan results")
             viewModel.addNewRssi(UNKNOWN_RSSI)
             return
         }
@@ -135,10 +133,20 @@ class WifiDetailsFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
         if (matchedWifiRecordWrapper.wifiBeaconRecord.data.hasSignalStrength()) {
             viewModel.addNewRssi(matchedWifiRecordWrapper.wifiBeaconRecord.data.signalStrength.value)
         } else {
-            Timber.i("No signal strength present for ${wifiNetwork.bssid} in the wifi beacon record")
+            Timber.i("No signal strength present for ${wifiNetwork?.bssid} in the wifi beacon record")
             viewModel.addNewRssi(UNKNOWN_RSSI)
 
         }
+    }
+
+    /**
+     * Sets the WifiNetwork that this fragment should display the details for. This needs to be
+     * called right after the fragment is created.
+     */
+    fun setWifiNetwork(wifiNetwork: WifiNetwork) {
+        this.wifiNetwork = wifiNetwork
+        // TODO We might need to update the ViewModel with the new WifiNetwork if it has already
+        // been initialized
     }
 
     /**

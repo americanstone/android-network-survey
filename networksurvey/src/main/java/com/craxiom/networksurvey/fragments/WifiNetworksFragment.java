@@ -39,6 +39,7 @@ import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener;
 import com.craxiom.networksurvey.model.WifiNetwork;
 import com.craxiom.networksurvey.model.WifiRecordWrapper;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 import com.google.android.material.snackbar.Snackbar;
@@ -260,9 +261,8 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
 
         try
         {
-            Navigation.findNavController(activity, getId())
-                    .navigate(WifiNetworksFragmentDirections.actionWifiListFragmentToWifiDetailsFragment(
-                            wifiNetwork));
+            SharedViewModel viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+            viewModel.triggerNavigationToWifiDetails(wifiNetwork);
         } catch (Exception e)
         {
             // An IllegalArgumentException can occur when the user switches to a new fragment (e.g. cellular details)

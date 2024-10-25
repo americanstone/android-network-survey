@@ -70,9 +70,6 @@ public class MqttFragment extends AConnectionFragment<NetworkSurveyService.Surve
                 {
                     SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
                     viewModel.triggerNavigationToQrCodeScanner();
-                    /* TODO Delete me Navigation.findNavController(requireActivity(), getId())
-                            .navigate(MqttFragmentDirections.actionMqttConnectionFragmentToScannerFragment()
-                                    .setMqttConnectionSettings(getCurrentMqttConnectionSettings()));*/
                 } else
                 {
                     Toast.makeText(getContext(), getString(R.string.grant_camera_permission), Toast.LENGTH_LONG).show();

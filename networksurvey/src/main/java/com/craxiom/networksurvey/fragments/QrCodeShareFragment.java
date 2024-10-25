@@ -33,6 +33,7 @@ public class QrCodeShareFragment extends Fragment
 
         ImageView imageView = view.findViewById(R.id.ivQrCode);
 
+        // FIXME Update this code with the new route approach
         MqttConnectionSettings mqttConnectionSettings =
                 QrCodeShareFragmentArgs.fromBundle(getArguments()).getMqttConnectionSettings();
         if (mqttConnectionSettings == null) return view;

@@ -140,7 +140,7 @@ fun getAppBarActions(currentScreen: MainScreens, navController: NavController): 
                 icon = R.drawable.ic_spectrum_chart,
                 description = R.string.open_wifi_spectrum,
                 onClick = {
-                    // TODO Navigate to WiFi Spectrum Fragment
+                    navController.navigate(NavOption.WifiSpectrum.name)
                 }
             )
         )

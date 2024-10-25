@@ -25,7 +25,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.Navigation;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DividerItemDecoration;
 
@@ -39,6 +38,7 @@ import com.craxiom.networksurvey.fragments.model.BluetoothViewModel;
 import com.craxiom.networksurvey.listeners.IBluetoothSurveyRecordListener;
 import com.craxiom.networksurvey.model.SortedSet;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.NsUtils;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 
@@ -256,9 +256,16 @@ public class BluetoothFragment extends AServiceDataFragment implements IBluetoot
         FragmentActivity activity = getActivity();
         if (activity == null) return;
 
-        Navigation.findNavController(activity, getId())
-                .navigate(BluetoothFragmentDirections.actionBtListFragmentToBtDetailsFragment(
-                        bluetoothData));
+        try
+        {
+            SharedViewModel viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+            viewModel.triggerNavigationToBluetooth(bluetoothData);
+        } catch (Exception e)
+        {
+            // An IllegalArgumentException can occur when the user switches to a new fragment (e.g. cellular details)
+            // before the navigation is complete. This is an edge case that we can ignore.
+            Timber.e(e, "Could not navigate to the Bluetooth Details Fragment");
+        }
     }
 
     /**

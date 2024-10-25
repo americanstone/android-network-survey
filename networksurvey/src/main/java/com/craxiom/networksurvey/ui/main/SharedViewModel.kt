@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.craxiom.messaging.BluetoothRecordData
+import com.craxiom.networksurvey.model.WifiNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -24,9 +26,15 @@ class SharedViewModel @Inject constructor(application: Application) :
 
     private val _navigateToWifiDetails = MutableLiveData(false)
     val navigateToWifiDetails: LiveData<Boolean> = _navigateToWifiDetails
+    private var _wifiNetwork: WifiNetwork? = null
+    val wifiNetwork: WifiNetwork?
+        get() = _wifiNetwork
 
-    private val _navigateToBluetooth = MutableLiveData(false)
-    val navigateToBluetooth: LiveData<Boolean> = _navigateToBluetooth
+    private val _navigateToBluetoothDetails = MutableLiveData(false)
+    val navigateToBluetoothDetails: LiveData<Boolean> = _navigateToBluetoothDetails
+    private var _bluetoothData: BluetoothRecordData? = null
+    val bluetoothData: BluetoothRecordData?
+        get() = _bluetoothData
 
     fun triggerNavigationToQrCodeScanner() {
         _navigateToQrCodeScanner.value = true
@@ -44,12 +52,14 @@ class SharedViewModel @Inject constructor(application: Application) :
         _navigateToWifiSpectrum.value = true
     }
 
-    fun triggerNavigationToWifiDetails() {
+    fun triggerNavigationToWifiDetails(wifiNetwork: WifiNetwork) {
+        _wifiNetwork = wifiNetwork
         _navigateToWifiDetails.value = true
     }
 
-    fun triggerNavigationToBluetooth() {
-        _navigateToBluetooth.value = true
+    fun triggerNavigationToBluetooth(bluetoothRecordData: BluetoothRecordData) {
+        _bluetoothData = bluetoothRecordData
+        _navigateToBluetoothDetails.value = true
     }
 
     fun resetNavigationFlag() {
@@ -59,6 +69,6 @@ class SharedViewModel @Inject constructor(application: Application) :
         _navigateToTowerMap.value = false
         _navigateToWifiSpectrum.value = false
         _navigateToWifiDetails.value = false
-        _navigateToBluetooth.value = false
+        _navigateToBluetoothDetails.value = false
     }
 }

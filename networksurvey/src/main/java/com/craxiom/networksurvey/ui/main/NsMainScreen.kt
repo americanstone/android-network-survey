@@ -19,6 +19,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.craxiom.networksurvey.R
+import com.craxiom.networksurvey.fragments.BLUETOOTH_DATA_KEY
+import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.main.appdrawer.AppDrawerContent
 import com.craxiom.networksurvey.ui.main.appdrawer.AppDrawerItemInfo
 import com.craxiom.networksurvey.ui.main.appdrawer.NavDrawerOption
@@ -77,15 +79,23 @@ fun MainCompose(
     LaunchedEffect(viewModel.navigateToWifiDetails) {
         viewModel.navigateToWifiDetails.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
+                mainNavController.currentBackStackEntry?.savedStateHandle?.set(
+                    WifiNetwork.KEY,
+                    viewModel.wifiNetwork
+                )
                 mainNavController.navigate(NavOption.WifiDetails.name)
                 viewModel.resetNavigationFlag()
             }
         }
     }
 
-    LaunchedEffect(viewModel.navigateToBluetooth) {
-        viewModel.navigateToBluetooth.observe(lifecycleOwner) { shouldNavigate ->
+    LaunchedEffect(viewModel.navigateToBluetoothDetails) {
+        viewModel.navigateToBluetoothDetails.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
+                mainNavController.currentBackStackEntry?.savedStateHandle?.set(
+                    BLUETOOTH_DATA_KEY,
+                    viewModel.bluetoothData
+                )
                 mainNavController.navigate(NavOption.BluetoothDetails.name)
                 viewModel.resetNavigationFlag()
             }

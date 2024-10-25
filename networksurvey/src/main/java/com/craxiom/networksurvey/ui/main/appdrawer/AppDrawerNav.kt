@@ -15,7 +15,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
-import com.craxiom.networksurvey.databinding.ContainerBluetoothFragmentBinding
+import com.craxiom.messaging.BluetoothRecordData
+import com.craxiom.networksurvey.databinding.ContainerBluetoothDetailsFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerGrpcFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerMqttFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerMqttQrCodeScannerFragmentBinding
@@ -24,8 +25,12 @@ import com.craxiom.networksurvey.databinding.ContainerSettingsFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerTowerMapFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerWifiDetailsFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerWifiSpectrumFragmentBinding
+import com.craxiom.networksurvey.fragments.BLUETOOTH_DATA_KEY
+import com.craxiom.networksurvey.fragments.BluetoothDetailsFragment
 import com.craxiom.networksurvey.fragments.MqttFragment
+import com.craxiom.networksurvey.fragments.WifiDetailsFragment
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
+import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.cellular.CalculatorScreen
 import com.craxiom.networksurvey.ui.main.HomeScreen
 import com.craxiom.networksurvey.ui.main.NavRoutes
@@ -47,7 +52,7 @@ fun NavGraphBuilder.mainGraph(
 
         composable(
             route = "${NavDrawerOption.MqttBrokerConnection.name}?${MqttConnectionSettings.KEY}={mqttConnectionSettings}",
-            arguments = listOf(navArgument("mqttConnectionSettings") {
+            arguments = listOf(navArgument(MqttConnectionSettings.KEY) {
                 type = NavType.ParcelableType(MqttConnectionSettings::class.java)
                 nullable = true  // Allow this argument to be nullable
             })
@@ -55,7 +60,7 @@ fun NavGraphBuilder.mainGraph(
             val mqttConnectionSettings =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     backStackEntry.arguments?.getParcelable(
-                        "mqttConnectionSettings",
+                        MqttConnectionSettings.KEY,
                         MqttConnectionSettings::class.java
                     )
                 } else {
@@ -97,11 +102,21 @@ fun NavGraphBuilder.mainGraph(
         }
 
         composable(NavOption.WifiDetails.name) {
-            WifiDetailsInCompose(paddingValues)
+            val wifiNetwork =
+                mainNavController.previousBackStackEntry?.savedStateHandle?.get<WifiNetwork>(
+                    WifiNetwork.KEY
+                )
+
+            WifiDetailsInCompose(paddingValues, wifiNetwork)
         }
 
         composable(NavOption.BluetoothDetails.name) {
-            BluetoothDetailsInCompose(paddingValues)
+            val bluetoothRecordData =
+                mainNavController.previousBackStackEntry?.savedStateHandle?.get<BluetoothRecordData>(
+                    BLUETOOTH_DATA_KEY
+                )
+
+            BluetoothDetailsInCompose(paddingValues, bluetoothRecordData)
         }
     }
 }
@@ -198,19 +213,31 @@ fun WifiSpectrumInCompose(paddingValues: PaddingValues) {
 }
 
 @Composable
-fun WifiDetailsInCompose(paddingValues: PaddingValues) {
-    AndroidViewBinding(
-        ContainerWifiDetailsFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues = paddingValues)
-    ) {
+fun WifiDetailsInCompose(paddingValues: PaddingValues, wifiNetwork: WifiNetwork?) {
+    if (wifiNetwork != null) {
+        AndroidViewBinding(
+            ContainerWifiDetailsFragmentBinding::inflate,
+            modifier = Modifier.padding(paddingValues = paddingValues)
+        ) {
+            val fragment = wifiDetailsFragmentContainerView.getFragment<WifiDetailsFragment>()
+            fragment.setWifiNetwork(wifiNetwork)
+        }
     }
 }
 
 @Composable
-fun BluetoothDetailsInCompose(paddingValues: PaddingValues) {
-    AndroidViewBinding(
-        ContainerBluetoothFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues = paddingValues)
-    ) {
+fun BluetoothDetailsInCompose(
+    paddingValues: PaddingValues,
+    bluetoothRecordData: BluetoothRecordData?
+) {
+    if (bluetoothRecordData != null) {
+        AndroidViewBinding(
+            ContainerBluetoothDetailsFragmentBinding::inflate,
+            modifier = Modifier.padding(paddingValues = paddingValues)
+        ) {
+            val fragment =
+                bluetoothDetailsFragmentContainerView.getFragment<BluetoothDetailsFragment>()
+            fragment.setBluetoothData(bluetoothRecordData)
+        }
     }
 }

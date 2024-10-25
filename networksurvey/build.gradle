@@ -123,7 +123,7 @@ dependencies {
     implementation("com.craxiom:network-survey-messaging:${networkSurveyMessagingVersion}") {
         exclude group: 'com.google.api.grpc', module: 'proto-google-common-protos'
     }
-    implementation "com.google.protobuf:protobuf-java-util:4.28.2"
+    implementation "com.google.protobuf:protobuf-java-util:4.27.3"
 
     implementation "mil.nga.geopackage:geopackage-android:6.7.3"
     implementation 'org.apache.commons:commons-csv:1.10.0'
