@@ -26,7 +26,6 @@ import androidx.core.view.MenuProvider;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.Navigation;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.SortedList;
@@ -223,6 +222,8 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
                     {
                         wifiNetworkRecyclerViewAdapter.notifyDataSetChanged();
                     }
+
+                    updateSharedModelWifiNetworkList();
                 }
             } catch (Exception e)
             {
@@ -240,15 +241,12 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
         menuInflater.inflate(R.menu.wifi_networks_menu, menu);
     }
 
+    // TODO Remove all the menu stuff from all the fragments
     @Override
     public boolean onMenuItemSelected(@NonNull MenuItem menuItem)
     {
-        if (menuItem.getItemId() == R.id.action_open_spectrum)
-        {
-            navigateToWifiSpectrumScreen();
-            return true;
-        }
-        return false;
+        //navigateToWifiSpectrumScreen();
+        return menuItem.getItemId() == R.id.action_open_spectrum;
     }
 
     /**
@@ -272,26 +270,27 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
     }
 
     /**
-     * Navigates to the Wi-Fi spectrum screen.
+     * This is not ideal, but the {@link com.craxiom.networksurvey.ui.main.HomeScreenKt} needs a
+     * way to access the latest Wi-Fi scan results when the user navigates to the Wi-Fi Spectrum
+     * screen. Therefore, we are updating the shared view model with the latest Wi-Fi scan results
+     * every time we get a new scan result.
      */
-    public void navigateToWifiSpectrumScreen()
+    private void updateSharedModelWifiNetworkList()
     {
         FragmentActivity activity = getActivity();
         if (activity == null) return;
 
         List<WifiRecordWrapper> wifiNetworks = new ArrayList<>();
-        synchronized (wifiRecordSortedListLock)
+        int size = wifiRecordSortedList.size();
+        for (int i = 0; i < size; i++)
         {
-            int size = wifiRecordSortedList.size();
-            for (int i = 0; i < size; i++)
-            {
-                wifiNetworks.add(wifiRecordSortedList.get(i));
-            }
+            wifiNetworks.add(wifiRecordSortedList.get(i));
         }
         WifiNetworkInfoList wifiNetworkInfoList = new WifiNetworkInfoList(wifiNetworks);
 
-        Navigation.findNavController(activity, getId())
-                .navigate(WifiNetworksFragmentDirections.actionWifiListFragmentToWifiSpectrumFragment(wifiNetworkInfoList));
+        SharedViewModel viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+        Timber.i("Updating viewModel with the latest Wi-Fi scan results %s", wifiNetworkInfoList);
+        viewModel.updateWifiNetworkInfoList(wifiNetworkInfoList);
     }
 
     /**

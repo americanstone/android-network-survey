@@ -9,7 +9,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import androidx.preference.PreferenceManager
 import com.craxiom.messaging.wifi.WifiBandwidth
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants
@@ -17,6 +16,7 @@ import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener
 import com.craxiom.networksurvey.model.WifiRecordWrapper
 import com.craxiom.networksurvey.services.NetworkSurveyService
 import com.craxiom.networksurvey.ui.wifi.WifiSpectrumScreen
+import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList
 import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrum24ViewModel
 import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrum5Group1ViewModel
 import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrum5Group2ViewModel
@@ -31,6 +31,7 @@ import com.craxiom.networksurvey.util.WifiUtils
  * The fragment that enables visualizing the the latest scan results on a simple spectrum view.
  */
 class WifiSpectrumFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
+    private var wifiNetworks: WifiNetworkInfoList? = null
     private lateinit var screenViewModel: WifiSpectrumScreenViewModel
     private lateinit var viewModel24Ghz: WifiSpectrum24ViewModel
     private lateinit var viewModel5GhzGroup1: WifiSpectrum5Group1ViewModel
@@ -56,9 +57,6 @@ class WifiSpectrumFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val args: WifiSpectrumFragmentArgs by navArgs()
-        val wifiNetworks = args.wifiNetworks
-
         val composeView = ComposeView(requireContext())
 
         composeView.apply {
@@ -99,8 +97,8 @@ class WifiSpectrumFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
                     )
                 }
 
-                if (wifiNetworks.networks.isNotEmpty()) {
-                    onWifiBeaconSurveyRecords(wifiNetworks.networks.toMutableList())
+                if (wifiNetworks?.networks?.isNotEmpty()?.not() == false) {
+                    onWifiBeaconSurveyRecords(wifiNetworks!!.networks.toMutableList())
                 }
             }
         }
@@ -162,6 +160,13 @@ class WifiSpectrumFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
         viewModel6Ghz.onWifiScanResults(wifiNetworkInfoList)
     }
 
+    /**
+     * Sets the list of WiFi networks to display on the spectrum view. This is only used for the
+     * initial display of the WiFi networks when the fragment is first created.
+     */
+    fun setWifiNetworks(wifiNetworkList: WifiNetworkInfoList) {
+        wifiNetworks = wifiNetworkList
+    }
 
     /**
      * Navigates to the Settings UI (primarily for the user to change the scan rate)

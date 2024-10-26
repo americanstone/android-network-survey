@@ -135,7 +135,6 @@ class WifiDetailsFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
         } else {
             Timber.i("No signal strength present for ${wifiNetwork?.bssid} in the wifi beacon record")
             viewModel.addNewRssi(UNKNOWN_RSSI)
-
         }
     }
 
@@ -153,6 +152,7 @@ class WifiDetailsFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
      * Navigates to the Settings UI (primarily for the user to change the scan rate)
      */
     fun navigateToSettings() {
+        // TODO Update this for Compose Navigation
         findNavController().navigate(WifiDetailsFragmentDirections.actionWifiDetailsToSettings())
     }
 }

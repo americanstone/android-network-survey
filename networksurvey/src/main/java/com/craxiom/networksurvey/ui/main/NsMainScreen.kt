@@ -67,15 +67,6 @@ fun MainCompose(
         }
     }
 
-    LaunchedEffect(viewModel.navigateToWifiSpectrum) {
-        viewModel.navigateToWifiSpectrum.observe(lifecycleOwner) { shouldNavigate ->
-            if (shouldNavigate) {
-                mainNavController.navigate(NavOption.WifiSpectrum.name)
-                viewModel.resetNavigationFlag()
-            }
-        }
-    }
-
     LaunchedEffect(viewModel.navigateToWifiDetails) {
         viewModel.navigateToWifiDetails.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
@@ -186,7 +177,8 @@ fun MainCompose(
                 ) {
                     mainGraph(
                         drawerState, paddingValues = paddingValues,
-                        mainNavController = mainNavController
+                        mainNavController = mainNavController,
+                        sharedViewModel = viewModel
                     )
                 }
             }

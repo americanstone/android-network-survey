@@ -29,16 +29,20 @@ import com.craxiom.networksurvey.fragments.BLUETOOTH_DATA_KEY
 import com.craxiom.networksurvey.fragments.BluetoothDetailsFragment
 import com.craxiom.networksurvey.fragments.MqttFragment
 import com.craxiom.networksurvey.fragments.WifiDetailsFragment
+import com.craxiom.networksurvey.fragments.WifiSpectrumFragment
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
 import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.cellular.CalculatorScreen
 import com.craxiom.networksurvey.ui.main.HomeScreen
 import com.craxiom.networksurvey.ui.main.NavRoutes
+import com.craxiom.networksurvey.ui.main.SharedViewModel
+import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList
 
 fun NavGraphBuilder.mainGraph(
     drawerState: DrawerState,
     paddingValues: PaddingValues,
-    mainNavController: NavHostController
+    mainNavController: NavHostController,
+    sharedViewModel: SharedViewModel
 ) {
     navigation(startDestination = NavDrawerOption.None.name, route = NavRoutes.MainRoute.name) {
         // TODO Need to add a header like the old display for all of these
@@ -98,7 +102,7 @@ fun NavGraphBuilder.mainGraph(
         }
 
         composable(NavOption.WifiSpectrum.name) {
-            WifiSpectrumInCompose(paddingValues)
+            WifiSpectrumInCompose(paddingValues, sharedViewModel.wifiNetworkList)
         }
 
         composable(NavOption.WifiDetails.name) {
@@ -204,11 +208,15 @@ fun TowerMapInCompose(paddingValues: PaddingValues) {
 }
 
 @Composable
-fun WifiSpectrumInCompose(paddingValues: PaddingValues) {
+fun WifiSpectrumInCompose(paddingValues: PaddingValues, wifiNetworks: WifiNetworkInfoList?) {
     AndroidViewBinding(
         ContainerWifiSpectrumFragmentBinding::inflate,
         modifier = Modifier.padding(paddingValues = paddingValues)
     ) {
+        if (wifiNetworks != null) {
+            val fragment = wifiSpectrumFragmentContainerView.getFragment<WifiSpectrumFragment>()
+            fragment.setWifiNetworks(wifiNetworks)
+        }
     }
 }
 
