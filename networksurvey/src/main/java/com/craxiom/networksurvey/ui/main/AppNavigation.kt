@@ -1,4 +1,4 @@
-package com.craxiom.networksurvey.ui.main.appdrawer
+package com.craxiom.networksurvey.ui.main
 
 import android.os.Build
 import androidx.compose.foundation.layout.Box
@@ -33,9 +33,6 @@ import com.craxiom.networksurvey.fragments.WifiSpectrumFragment
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
 import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.cellular.CalculatorScreen
-import com.craxiom.networksurvey.ui.main.HomeScreen
-import com.craxiom.networksurvey.ui.main.NavRoutes
-import com.craxiom.networksurvey.ui.main.SharedViewModel
 import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList
 
 fun NavGraphBuilder.mainGraph(
@@ -55,6 +52,7 @@ fun NavGraphBuilder.mainGraph(
         }
 
         composable(
+            // TODO Update the argument approach to match the wifi spectrum setup
             route = "${NavDrawerOption.MqttBrokerConnection.name}?${MqttConnectionSettings.KEY}={mqttConnectionSettings}",
             arguments = listOf(navArgument(MqttConnectionSettings.KEY) {
                 type = NavType.ParcelableType(MqttConnectionSettings::class.java)

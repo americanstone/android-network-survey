@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import com.craxiom.networksurvey.ui.main.DrawerParams
+import com.craxiom.networksurvey.ui.main.NavDrawerOption
 import com.craxiom.networksurvey.util.NsTheme
 
 @Composable

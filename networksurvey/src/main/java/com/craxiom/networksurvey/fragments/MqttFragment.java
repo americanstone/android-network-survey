@@ -68,7 +68,9 @@ public class MqttFragment extends AConnectionFragment<NetworkSurveyService.Surve
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted)
                 {
-                    SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+                    FragmentActivity activity = getActivity();
+                    if (activity == null) return;
+                    SharedViewModel viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
                     viewModel.triggerNavigationToQrCodeScanner();
                 } else
                 {

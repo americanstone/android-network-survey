@@ -40,6 +40,9 @@ class SharedViewModel @Inject constructor(application: Application) :
     val bluetoothData: BluetoothRecordData?
         get() = _bluetoothData
 
+    private val _navigateToMqttConnection = MutableLiveData(false)
+    val navigateToMqttConnection: LiveData<Boolean> = _navigateToMqttConnection
+
     private val _navigateToSettings = MutableLiveData(false)
     val navigateToSettings: LiveData<Boolean> = _navigateToSettings
 
@@ -73,6 +76,10 @@ class SharedViewModel @Inject constructor(application: Application) :
         _navigateToBluetoothDetails.value = true
     }
 
+    fun triggerNavigationToMqttConnection() {
+        _navigateToMqttConnection.value = true
+    }
+
     fun triggerNavigationToSettings() {
         _navigateToSettings.value = true
     }
@@ -85,6 +92,7 @@ class SharedViewModel @Inject constructor(application: Application) :
         //_navigateToWifiSpectrum.value = false
         _navigateToWifiDetails.value = false
         _navigateToBluetoothDetails.value = false
+        _navigateToMqttConnection.value = false
         _navigateToSettings.value = false
     }
 }

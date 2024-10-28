@@ -10,6 +10,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,7 +36,6 @@ import com.craxiom.networksurvey.fragments.MainGnssFragment
 import com.craxiom.networksurvey.fragments.WifiNetworksFragment
 import com.craxiom.networksurvey.ui.main.appbar.AppBar
 import com.craxiom.networksurvey.ui.main.appbar.AppBarAction
-import com.craxiom.networksurvey.ui.main.appdrawer.NavOption
 
 @Composable
 fun HomeScreen(
@@ -49,6 +49,7 @@ fun HomeScreen(
         topBar = {
             AppBar(
                 drawerState = drawerState,
+                title = getAppBarTitle(currentScreen),
                 appBarActions = getAppBarActions(currentScreen, mainNavController)
             )
         },
@@ -88,7 +89,7 @@ fun HomeScreen(
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     var navigationSelectedItem by remember {
-        mutableStateOf(0)
+        mutableIntStateOf(0)
     }
 
     NavigationBar {
@@ -119,6 +120,19 @@ fun BottomNavigationBar(navController: NavController) {
                 }
             )
         }
+    }
+}
+
+/**
+ * Returns teh title resource ID that corresponds to the current screen
+ */
+fun getAppBarTitle(currentScreen: MainScreens): Int {
+    return when (currentScreen) {
+        MainScreens.Dashboard -> R.string.nav_dashboard
+        MainScreens.Cellular -> R.string.cellular_title
+        MainScreens.Wifi -> R.string.wifi_title
+        MainScreens.Bluetooth -> R.string.bluetooth_title
+        MainScreens.Gnss -> R.string.gnss_title
     }
 }
 

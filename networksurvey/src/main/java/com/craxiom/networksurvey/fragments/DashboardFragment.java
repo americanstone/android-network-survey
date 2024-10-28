@@ -32,7 +32,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.Navigation;
 import androidx.preference.PreferenceManager;
 
 import com.craxiom.mqttlibrary.IConnectionStateListener;
@@ -46,6 +45,7 @@ import com.craxiom.networksurvey.databinding.MqttStreamItemBinding;
 import com.craxiom.networksurvey.fragments.model.DashboardViewModel;
 import com.craxiom.networksurvey.listeners.ILoggingChangeListener;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.MathUtils;
 import com.craxiom.networksurvey.util.MdmUtils;
 import com.craxiom.networksurvey.util.ToggleLoggingTask;
@@ -297,11 +297,14 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     {
         try
         {
-            Navigation.findNavController(requireActivity(), getId())
-                    .navigate(DashboardFragmentDirections.actionMainDashboardToMqttConnection());
+            FragmentActivity activity = getActivity();
+            if (activity == null) return;
+
+            SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+            viewModel.triggerNavigationToMqttConnection();
         } catch (Exception e)
         {
-            // It is possible that the user has tried to connect, the snakbar message is displayed,
+            // It is possible that the user has tried to connect, the snackbar message is displayed,
             // and then they navigated away from the dashboard fragment and then clicked on the
             // snackbar "Open" button. In this case we will get an IllegalStateException.
             Timber.e(e, "Could not navigate to the MQTT Connection fragment");

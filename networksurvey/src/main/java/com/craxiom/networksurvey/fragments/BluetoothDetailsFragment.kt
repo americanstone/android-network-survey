@@ -9,7 +9,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.fragment.findNavController
 import androidx.preference.PreferenceManager
 import com.craxiom.messaging.BluetoothRecord
 import com.craxiom.messaging.BluetoothRecordData
@@ -164,5 +163,6 @@ class BluetoothDetailsFragment : AServiceDataFragment(), IBluetoothSurveyRecordL
         val nsActivity = activity ?: return
 
         val viewModel = ViewModelProvider(nsActivity)[SharedViewModel::class.java]
-        viewModel.triggerNavigationToSettings()    }
+        viewModel.triggerNavigationToSettings()
+    }
 }

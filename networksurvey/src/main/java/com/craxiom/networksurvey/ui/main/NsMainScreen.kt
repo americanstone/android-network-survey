@@ -23,9 +23,6 @@ import com.craxiom.networksurvey.fragments.BLUETOOTH_DATA_KEY
 import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.main.appdrawer.AppDrawerContent
 import com.craxiom.networksurvey.ui.main.appdrawer.AppDrawerItemInfo
-import com.craxiom.networksurvey.ui.main.appdrawer.NavDrawerOption
-import com.craxiom.networksurvey.ui.main.appdrawer.NavOption
-import com.craxiom.networksurvey.ui.main.appdrawer.mainGraph
 import com.craxiom.networksurvey.util.NsTheme
 
 
@@ -88,6 +85,15 @@ fun MainCompose(
                     viewModel.bluetoothData
                 )
                 mainNavController.navigate(NavOption.BluetoothDetails.name)
+                viewModel.resetNavigationFlag()
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel.navigateToMqttConnection) {
+        viewModel.navigateToMqttConnection.observe(lifecycleOwner) { shouldNavigate ->
+            if (shouldNavigate) {
+                mainNavController.navigate(NavDrawerOption.MqttBrokerConnection.name)
                 viewModel.resetNavigationFlag()
             }
         }
