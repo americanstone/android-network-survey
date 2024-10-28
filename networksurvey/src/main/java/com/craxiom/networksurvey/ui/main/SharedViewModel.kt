@@ -40,6 +40,9 @@ class SharedViewModel @Inject constructor(application: Application) :
     val bluetoothData: BluetoothRecordData?
         get() = _bluetoothData
 
+    private val _navigateToSettings = MutableLiveData(false)
+    val navigateToSettings: LiveData<Boolean> = _navigateToSettings
+
     fun triggerNavigationToQrCodeScanner() {
         _navigateToQrCodeScanner.value = true
     }
@@ -70,6 +73,10 @@ class SharedViewModel @Inject constructor(application: Application) :
         _navigateToBluetoothDetails.value = true
     }
 
+    fun triggerNavigationToSettings() {
+        _navigateToSettings.value = true
+    }
+
     fun resetNavigationFlag() {
         // TODO is this a good idea to set them all in one method?
         _navigateToQrCodeScanner.value = false
@@ -78,5 +85,6 @@ class SharedViewModel @Inject constructor(application: Application) :
         //_navigateToWifiSpectrum.value = false
         _navigateToWifiDetails.value = false
         _navigateToBluetoothDetails.value = false
+        _navigateToSettings.value = false
     }
 }

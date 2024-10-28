@@ -7,14 +7,15 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.fragment.findNavController
 import androidx.preference.PreferenceManager
 import com.craxiom.messaging.wifi.WifiBandwidth
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants
 import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener
 import com.craxiom.networksurvey.model.WifiRecordWrapper
 import com.craxiom.networksurvey.services.NetworkSurveyService
+import com.craxiom.networksurvey.ui.main.SharedViewModel
 import com.craxiom.networksurvey.ui.wifi.WifiSpectrumScreen
 import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList
 import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrum24ViewModel
@@ -172,7 +173,10 @@ class WifiSpectrumFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
      * Navigates to the Settings UI (primarily for the user to change the scan rate)
      */
     fun navigateToSettings() {
-        findNavController().navigate(WifiDetailsFragmentDirections.actionWifiDetailsToSettings())
+        val nsActivity = activity ?: return
+
+        val viewModel = ViewModelProvider(nsActivity)[SharedViewModel::class.java]
+        viewModel.triggerNavigationToSettings()
     }
 }
 

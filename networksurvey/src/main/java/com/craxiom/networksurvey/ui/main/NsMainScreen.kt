@@ -93,6 +93,15 @@ fun MainCompose(
         }
     }
 
+    LaunchedEffect(viewModel.navigateToSettings) {
+        viewModel.navigateToSettings.observe(lifecycleOwner) { shouldNavigate ->
+            if (shouldNavigate) {
+                mainNavController.navigate(NavDrawerOption.Settings.name)
+                viewModel.resetNavigationFlag()
+            }
+        }
+    }
+
     NsTheme {
         Scaffold { paddingValues ->
             ModalNavigationDrawer(
