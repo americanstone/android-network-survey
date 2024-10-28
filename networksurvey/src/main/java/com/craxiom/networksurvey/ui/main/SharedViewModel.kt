@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.craxiom.messaging.BluetoothRecordData
+import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
 import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,15 +43,20 @@ class SharedViewModel @Inject constructor(application: Application) :
 
     private val _navigateToMqttConnection = MutableLiveData(false)
     val navigateToMqttConnection: LiveData<Boolean> = _navigateToMqttConnection
+    private var _mqttConnectionSettings: MqttConnectionSettings? = null
+    val mqttConnectionSettings: MqttConnectionSettings?
+        get() = _mqttConnectionSettings
 
     private val _navigateToSettings = MutableLiveData(false)
     val navigateToSettings: LiveData<Boolean> = _navigateToSettings
 
-    fun triggerNavigationToQrCodeScanner() {
+    fun triggerNavigationToQrCodeScanner(mqttConnectionSettings: MqttConnectionSettings) {
+        _mqttConnectionSettings = mqttConnectionSettings
         _navigateToQrCodeScanner.value = true
     }
 
-    fun triggerNavigationToQrCodeShare() {
+    fun triggerNavigationToQrCodeShare(mqttConnectionSettings: MqttConnectionSettings) {
+        _mqttConnectionSettings = mqttConnectionSettings
         _navigateToQrCodeShare.value = true
     }
 
@@ -80,6 +86,11 @@ class SharedViewModel @Inject constructor(application: Application) :
         _navigateToMqttConnection.value = true
     }
 
+    fun triggerNavigationToMqttConnection(mqttConnectionSettings: MqttConnectionSettings?) {
+        _mqttConnectionSettings = mqttConnectionSettings
+        _navigateToMqttConnection.value = true
+    }
+
     fun triggerNavigationToSettings() {
         _navigateToSettings.value = true
     }
@@ -94,5 +105,9 @@ class SharedViewModel @Inject constructor(application: Application) :
         _navigateToBluetoothDetails.value = false
         _navigateToMqttConnection.value = false
         _navigateToSettings.value = false
+    }
+
+    fun resetMqttConnectionSettings() {
+        _mqttConnectionSettings = null
     }
 }

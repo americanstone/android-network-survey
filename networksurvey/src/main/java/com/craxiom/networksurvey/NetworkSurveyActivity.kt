@@ -119,9 +119,6 @@ class NetworkSurveyActivity : AppCompatActivity() {
 
         // TODO Delete me setupNavigation()
 
-        // Set the version number at the bottom of the navigation drawer
-        // TODO Delete me setAppVersionNumber()
-
         surveyServiceConnection = SurveyServiceConnection()
 
         Application.createNotificationChannel(this)
@@ -600,20 +597,6 @@ class NetworkSurveyActivity : AppCompatActivity() {
             }
         }
         onBackPressedDispatcher.addCallback(this, callback)
-    }
-
-    /**
-     * Get the app version name and set it at the bottom of the navigation drawer.
-     */
-    // TODO Delete me
-    private fun setAppVersionNumber() {
-        try {
-            val appVersionName = NsUtils.getAppVersionName(this)
-            val appVersionView = findViewById<TextView>(R.id.app_version_name)
-            appVersionView.text = getString(R.string.app_version, appVersionName)
-        } catch (e: Exception) {
-            Timber.wtf(e, "Could not set the app version number")
-        }
     }
 
     /**

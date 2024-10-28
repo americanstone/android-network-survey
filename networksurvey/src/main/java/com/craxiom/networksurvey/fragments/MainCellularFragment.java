@@ -185,6 +185,7 @@ public class MainCellularFragment extends AServiceDataFragment implements MenuPr
         menuInflater.inflate(R.menu.cellular_details_menu, menu);
     }
 
+    // TODO Delete the menu item stuff in all the fragments
     @Override
     public boolean onMenuItemSelected(@NonNull MenuItem menuItem)
     {

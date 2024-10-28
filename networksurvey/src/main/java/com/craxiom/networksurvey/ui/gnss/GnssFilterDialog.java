@@ -29,7 +29,7 @@ public class GnssFilterDialog extends DialogFragment
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState)
     {
-        Bundle args = getArguments();
+        Bundle args = getArguments(); // TODO WIP Test this getArguments
         String[] items = args.getStringArray(ITEMS);
         mChecks = args.getBooleanArray(CHECKS);
         if (savedInstanceState != null)

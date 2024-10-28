@@ -24,7 +24,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.Navigation;
 
 import com.craxiom.mqttlibrary.MqttConstants;
 import com.craxiom.mqttlibrary.connection.BrokerConnectionInfo;
@@ -71,7 +70,7 @@ public class MqttFragment extends AConnectionFragment<NetworkSurveyService.Surve
                     FragmentActivity activity = getActivity();
                     if (activity == null) return;
                     SharedViewModel viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
-                    viewModel.triggerNavigationToQrCodeScanner();
+                    viewModel.triggerNavigationToQrCodeScanner(getCurrentMqttConnectionSettings());
                 } else
                 {
                     Toast.makeText(getContext(), getString(R.string.grant_camera_permission), Toast.LENGTH_LONG).show();
@@ -137,9 +136,8 @@ public class MqttFragment extends AConnectionFragment<NetworkSurveyService.Surve
                 codeShareButton.setVisibility(View.VISIBLE);
                 codeShareButton.setOnClickListener(v -> {
                     storeConnectionParameters(); // Store the parameters so that the latest values are shared
-                    Navigation.findNavController(requireActivity(), getId())
-                            .navigate(MqttFragmentDirections.actionMqttConnectionFragmentToShareFragment()
-                                    .setMqttConnectionSettings(getCurrentMqttConnectionSettings()));
+                    SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+                    viewModel.triggerNavigationToQrCodeShare(getCurrentMqttConnectionSettings());
                 });
             }
 
@@ -286,10 +284,7 @@ public class MqttFragment extends AConnectionFragment<NetworkSurveyService.Surve
                 if (hasCameraPermission())
                 {
                     SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-                    viewModel.triggerNavigationToQrCodeScanner();
-                    /* TODO Delete me Navigation.findNavController(requireActivity(), getId())
-                            .navigate(MqttFragmentDirections.actionMqttConnectionFragmentToScannerFragment()
-                                    .setMqttConnectionSettings(getCurrentMqttConnectionSettings()));*/
+                    viewModel.triggerNavigationToQrCodeScanner(getCurrentMqttConnectionSettings());
                 } else
                 {
                     cameraPermissionRequestLauncher.launch(Manifest.permission.CAMERA);
@@ -402,9 +397,10 @@ public class MqttFragment extends AConnectionFragment<NetworkSurveyService.Surve
      */
     private void requestBluetoothPermissions()
     {
-        if (missingBluetoothPermissions())
+        FragmentActivity activity = getActivity();
+        if (missingBluetoothPermissions() && activity != null)
         {
-            ActivityCompat.requestPermissions(getActivity(), NetworkSurveyActivity.BLUETOOTH_PERMISSIONS, ACCESS_BLUETOOTH_PERMISSION_REQUEST_ID);
+            ActivityCompat.requestPermissions(activity, NetworkSurveyActivity.BLUETOOTH_PERMISSIONS, ACCESS_BLUETOOTH_PERMISSION_REQUEST_ID);
         }
     }
 }

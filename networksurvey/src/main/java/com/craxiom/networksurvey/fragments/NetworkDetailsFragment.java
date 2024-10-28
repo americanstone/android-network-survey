@@ -99,7 +99,7 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
     {
         super.onCreate(savedInstanceState);
 
-        Bundle args = getArguments();
+        Bundle args = getArguments(); // TODO WIP Test this getArguments with multiple SIM cards
         //noinspection DataFlowIssue
         subscriptionId = args.getInt(SUBSCRIPTION_ID_KEY, -1);
         Timber.d("Retrieving the subscriptionId from the arguments. subscriptionId=%d", subscriptionId);

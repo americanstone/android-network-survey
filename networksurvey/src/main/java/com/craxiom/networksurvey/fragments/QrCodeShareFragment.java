@@ -9,9 +9,11 @@ import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.craxiom.networksurvey.R;
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.google.gson.Gson;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
@@ -33,9 +35,8 @@ public class QrCodeShareFragment extends Fragment
 
         ImageView imageView = view.findViewById(R.id.ivQrCode);
 
-        // FIXME Update this code with the new route approach
-        MqttConnectionSettings mqttConnectionSettings =
-                QrCodeShareFragmentArgs.fromBundle(getArguments()).getMqttConnectionSettings();
+        SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        MqttConnectionSettings mqttConnectionSettings = viewModel.getMqttConnectionSettings();
         if (mqttConnectionSettings == null) return view;
 
         // Removing the device name because if two devices use the same MQTT client ID, then neither will be able to connect

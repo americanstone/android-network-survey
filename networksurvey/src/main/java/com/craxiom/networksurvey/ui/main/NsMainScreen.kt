@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.craxiom.networksurvey.R
 import com.craxiom.networksurvey.fragments.BLUETOOTH_DATA_KEY
+import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
 import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.main.appdrawer.AppDrawerContent
 import com.craxiom.networksurvey.ui.main.appdrawer.AppDrawerItemInfo
@@ -93,8 +94,15 @@ fun MainCompose(
     LaunchedEffect(viewModel.navigateToMqttConnection) {
         viewModel.navigateToMqttConnection.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {
+                if (viewModel.mqttConnectionSettings != null) {
+                    mainNavController.currentBackStackEntry?.savedStateHandle?.set(
+                        MqttConnectionSettings.KEY,
+                        viewModel.mqttConnectionSettings
+                    )
+                }
                 mainNavController.navigate(NavDrawerOption.MqttBrokerConnection.name)
                 viewModel.resetNavigationFlag()
+                viewModel.resetMqttConnectionSettings()
             }
         }
     }

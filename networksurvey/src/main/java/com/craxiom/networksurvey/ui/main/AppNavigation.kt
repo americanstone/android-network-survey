@@ -1,6 +1,5 @@
 package com.craxiom.networksurvey.ui.main
 
-import android.os.Build
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -11,10 +10,8 @@ import androidx.compose.ui.viewinterop.AndroidViewBinding
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import androidx.navigation.navArgument
 import com.craxiom.messaging.BluetoothRecordData
 import com.craxiom.networksurvey.databinding.ContainerBluetoothDetailsFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerGrpcFragmentBinding
@@ -51,24 +48,13 @@ fun NavGraphBuilder.mainGraph(
             GrpcFragmentInCompose(paddingValues)
         }
 
-        composable(
-            // TODO Update the argument approach to match the wifi spectrum setup
-            route = "${NavDrawerOption.MqttBrokerConnection.name}?${MqttConnectionSettings.KEY}={mqttConnectionSettings}",
-            arguments = listOf(navArgument(MqttConnectionSettings.KEY) {
-                type = NavType.ParcelableType(MqttConnectionSettings::class.java)
-                nullable = true  // Allow this argument to be nullable
-            })
-        ) { backStackEntry ->
+        composable(NavDrawerOption.MqttBrokerConnection.name)
+        {
             val mqttConnectionSettings =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    backStackEntry.arguments?.getParcelable(
-                        MqttConnectionSettings.KEY,
-                        MqttConnectionSettings::class.java
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    backStackEntry.arguments?.getParcelable(MqttConnectionSettings.KEY)
-                }
+                mainNavController.previousBackStackEntry?.savedStateHandle?.get<MqttConnectionSettings>(
+                    MqttConnectionSettings.KEY
+                )
+
             MqttFragmentInCompose(
                 paddingValues = paddingValues,
                 mqttConnectionSettings = mqttConnectionSettings

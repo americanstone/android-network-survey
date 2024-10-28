@@ -196,7 +196,7 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
         builder.setNegativeButton("Reject") { dialog, _ ->
             PreferenceUtils.setAcceptMapPrivacy(requireContext(), false)
             dialog.dismiss()
-            findNavController().popBackStack() // Go back to the previous fragment
+            findNavController().popBackStack() // Go back to the previous fragment // TODO WIP Test this
         }
         builder.show()
     }
