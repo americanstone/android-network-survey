@@ -20,7 +20,7 @@ import com.craxiom.networksurvey.ui.UNKNOWN_RSSI
 import com.craxiom.networksurvey.ui.bluetooth.BluetoothDetailsScreen
 import com.craxiom.networksurvey.ui.bluetooth.BluetoothDetailsViewModel
 import com.craxiom.networksurvey.ui.main.SharedViewModel
-import com.craxiom.networksurvey.util.NsTheme
+import com.craxiom.networksurvey.ui.theme.NsTheme
 import com.craxiom.networksurvey.util.PreferenceUtils
 import timber.log.Timber
 

@@ -16,6 +16,7 @@ import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener
 import com.craxiom.networksurvey.model.WifiRecordWrapper
 import com.craxiom.networksurvey.services.NetworkSurveyService
 import com.craxiom.networksurvey.ui.main.SharedViewModel
+import com.craxiom.networksurvey.ui.theme.NsTheme
 import com.craxiom.networksurvey.ui.wifi.WifiSpectrumScreen
 import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList
 import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrum24ViewModel
@@ -24,7 +25,6 @@ import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrum5Group2ViewModel
 import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrum5Group3ViewModel
 import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrum6ViewModel
 import com.craxiom.networksurvey.ui.wifi.model.WifiSpectrumScreenViewModel
-import com.craxiom.networksurvey.util.NsTheme
 import com.craxiom.networksurvey.util.PreferenceUtils
 import com.craxiom.networksurvey.util.WifiUtils
 

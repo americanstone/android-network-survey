@@ -24,7 +24,7 @@ import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
 import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.main.appdrawer.AppDrawerContent
 import com.craxiom.networksurvey.ui.main.appdrawer.AppDrawerItemInfo
-import com.craxiom.networksurvey.util.NsTheme
+import com.craxiom.networksurvey.ui.theme.NsTheme
 
 
 @Composable

@@ -23,15 +23,14 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import com.craxiom.networksurvey.ui.main.DrawerParams
 import com.craxiom.networksurvey.ui.main.NavDrawerOption
-import com.craxiom.networksurvey.util.NsTheme
+import com.craxiom.networksurvey.ui.theme.NsTheme
 
 @Composable
 fun <T> AppDrawerItem(item: AppDrawerItemInfo<T>, onClick: (options: T) -> Unit) =
     Surface(
-        color = MaterialTheme.colorScheme.onPrimary,
         modifier = Modifier
             .width(200.dp)
-            .padding(16.dp),
+            .padding(vertical = 4.dp),
         onClick = { onClick(item.drawerOption) },
         shape = RoundedCornerShape(50),
     ) {
@@ -39,7 +38,7 @@ fun <T> AppDrawerItem(item: AppDrawerItemInfo<T>, onClick: (options: T) -> Unit)
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .padding(8.dp)
+                .padding(vertical = 8.dp, horizontal = 6.dp)
         ) {
             Icon(
                 painter = painterResource(id = item.drawableId),
@@ -51,7 +50,8 @@ fun <T> AppDrawerItem(item: AppDrawerItemInfo<T>, onClick: (options: T) -> Unit)
             Text(
                 text = stringResource(id = item.title),
                 style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Start,
+                maxLines = 1
             )
         }
     }

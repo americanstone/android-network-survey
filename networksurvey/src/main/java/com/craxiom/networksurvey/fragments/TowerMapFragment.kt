@@ -30,7 +30,7 @@ import com.craxiom.networksurvey.services.NetworkSurveyService
 import com.craxiom.networksurvey.ui.cellular.TowerMapScreen
 import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo
 import com.craxiom.networksurvey.ui.cellular.model.TowerMapViewModel
-import com.craxiom.networksurvey.util.NsTheme
+import com.craxiom.networksurvey.ui.theme.NsTheme
 import com.craxiom.networksurvey.util.PreferenceUtils
 import timber.log.Timber
 import java.util.Collections
