@@ -12,9 +12,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -22,7 +19,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.view.MenuProvider;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
@@ -53,7 +49,7 @@ import timber.log.Timber;
  *
  * @since 0.1.2
  */
-public class WifiNetworksFragment extends AServiceDataFragment implements IWifiSurveyRecordListener, MenuProvider
+public class WifiNetworksFragment extends AServiceDataFragment implements IWifiSurveyRecordListener
 {
     private FragmentWifiNetworksListBinding binding;
     private SortedList<WifiRecordWrapper> wifiRecordSortedList;
@@ -134,12 +130,6 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
                     // think that scans are being throttled by the Android OS.
                     if (paused) lastScanTime = System.currentTimeMillis();
                 });
-
-        FragmentActivity activity = getActivity();
-        if (activity != null)
-        {
-            activity.addMenuProvider(this, getViewLifecycleOwner());
-        }
 
         return binding.getRoot();
     }
@@ -233,20 +223,6 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
                 Timber.e(e, "Could not update the Wi-Fi Fragment UI due to an exception");
             }
         });
-    }
-
-    @Override
-    public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater)
-    {
-        menuInflater.inflate(R.menu.wifi_networks_menu, menu);
-    }
-
-    // TODO Remove all the menu stuff from all the fragments
-    @Override
-    public boolean onMenuItemSelected(@NonNull MenuItem menuItem)
-    {
-        //navigateToWifiSpectrumScreen();
-        return menuItem.getItemId() == R.id.action_open_spectrum;
     }
 
     /**

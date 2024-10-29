@@ -17,10 +17,10 @@ import androidx.appcompat.app.AlertDialog
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.MenuProvider
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import com.craxiom.networksurvey.R
 import com.craxiom.networksurvey.SimChangeReceiver
 import com.craxiom.networksurvey.listeners.ICellularSurveyRecordListener
@@ -30,6 +30,7 @@ import com.craxiom.networksurvey.services.NetworkSurveyService
 import com.craxiom.networksurvey.ui.cellular.TowerMapScreen
 import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo
 import com.craxiom.networksurvey.ui.cellular.model.TowerMapViewModel
+import com.craxiom.networksurvey.ui.main.SharedViewModel
 import com.craxiom.networksurvey.ui.theme.NsTheme
 import com.craxiom.networksurvey.util.PreferenceUtils
 import timber.log.Timber
@@ -68,8 +69,9 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val args: TowerMapFragmentArgs by navArgs()
-        servingCell = args.servingCell
+        val viewModel = ViewModelProvider(requireActivity())[SharedViewModel::class.java]
+        servingCell = viewModel.latestServingCellInfo
+
         activity?.addMenuProvider(this, getViewLifecycleOwner())
 
         composeView = ComposeView(requireContext()).apply {

@@ -35,7 +35,7 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
         MutableStateFlow<HashMap<Int, ServingSignalInfo>>(HashMap()) // <SubscriptionId, ServingSignalInfo>
     val servingSignals = _servingSignals.asStateFlow()
 
-    lateinit var mapView: MapView
+    var mapView: MapView? = null
     lateinit var gpsMyLocationProvider: GpsMyLocationProvider
     private var hasMapLocationBeenSet = false
 
@@ -95,7 +95,7 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
         if (location != null && !hasMapLocationBeenSet) {
             if (location.latitude != 0.0 || location.longitude != 0.0) {
                 hasMapLocationBeenSet = true
-                mapView.controller.setCenter(GeoPoint(location.latitude, location.longitude))
+                mapView!!.controller.setCenter(GeoPoint(location.latitude, location.longitude))
             }
         }
 
@@ -137,7 +137,9 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
             }
         }
 
-        recreateOverlaysFromTowerData(mapView, false)
+        mapView?.let { mapView ->
+            recreateOverlaysFromTowerData(mapView, false)
+        }
     }
 
     /**

@@ -8,22 +8,16 @@ import android.graphics.Rect;
 import android.os.Bundle;
 import android.telephony.SubscriptionInfo;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.view.MenuProvider;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.navigation.Navigation;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -32,7 +26,6 @@ import com.craxiom.networksurvey.SimChangeReceiver;
 import com.craxiom.networksurvey.databinding.FragmentMainTabsBinding;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.services.controller.CellularController;
-import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
@@ -45,7 +38,7 @@ import timber.log.Timber;
  *
  * @since 0.0.10
  */
-public class MainCellularFragment extends AServiceDataFragment implements MenuProvider
+public class MainCellularFragment extends AServiceDataFragment
 {
     private List<SubscriptionInfo> activeSubscriptionInfoList;
 
@@ -116,12 +109,6 @@ public class MainCellularFragment extends AServiceDataFragment implements MenuPr
             }
         });
 
-        FragmentActivity activity = getActivity();
-        if (activity != null)
-        {
-            activity.addMenuProvider(this, getViewLifecycleOwner());
-        }
-
         return binding.getRoot();
     }
 
@@ -177,24 +164,6 @@ public class MainCellularFragment extends AServiceDataFragment implements MenuPr
     protected void onSurveyServiceDisconnecting(NetworkSurveyService service)
     {
         super.onSurveyServiceDisconnecting(service);
-    }
-
-    @Override
-    public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater)
-    {
-        menuInflater.inflate(R.menu.cellular_details_menu, menu);
-    }
-
-    // TODO Delete the menu item stuff in all the fragments
-    @Override
-    public boolean onMenuItemSelected(@NonNull MenuItem menuItem)
-    {
-        if (menuItem.getItemId() == R.id.action_open_tower_map)
-        {
-            navigateToTowerMap();
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -273,18 +242,5 @@ public class MainCellularFragment extends AServiceDataFragment implements MenuPr
         int bottom = binding.mainTabsScrollView.getChildAt(0).getBottom() + binding.mainTabsScrollView.getPaddingBottom();
         int delta = bottom - scrollBounds.bottom;
         return delta == 0;
-    }
-
-    /**
-     * Navigates to the cell tower map screen.
-     */
-    public void navigateToTowerMap()
-    {
-        FragmentActivity activity = getActivity();
-        if (activity == null) return;
-
-        // TODO Figure out a way to pass the serving cell information from the NetworkDetailsFragment that is currently in view when the button is clicked
-        Navigation.findNavController(activity, R.id.main_content)
-                .navigate(MainCellularFragmentDirections.actionMainCellularFragmentToTowerMapFragment(new ServingCellInfo(null, -1)));
     }
 }

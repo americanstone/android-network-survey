@@ -7,6 +7,7 @@ import androidx.lifecycle.MutableLiveData
 import com.craxiom.messaging.BluetoothRecordData
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
 import com.craxiom.networksurvey.model.WifiNetwork
+import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo
 import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,6 +23,9 @@ class SharedViewModel @Inject constructor(application: Application) :
 
     private val _navigateToTowerMap = MutableLiveData(false)
     val navigateToTowerMap: LiveData<Boolean> = _navigateToTowerMap
+    private var _latestServingCellInfo: ServingCellInfo? = null
+    val latestServingCellInfo: ServingCellInfo?
+        get() = _latestServingCellInfo
 
     /*private val _navigateToWifiSpectrum = MutableLiveData(false)
     val navigateToWifiSpectrum: LiveData<Boolean> = _navigateToWifiSpectrum*/
@@ -58,6 +62,10 @@ class SharedViewModel @Inject constructor(application: Application) :
     fun triggerNavigationToQrCodeShare(mqttConnectionSettings: MqttConnectionSettings) {
         _mqttConnectionSettings = mqttConnectionSettings
         _navigateToQrCodeShare.value = true
+    }
+
+    fun updateLatestServingCellInfo(servingCellInfo: ServingCellInfo) {
+        _latestServingCellInfo = servingCellInfo
     }
 
     fun triggerNavigationToTowerMap() {

@@ -120,6 +120,7 @@ fun MainCompose(
         Scaffold { paddingValues ->
             ModalNavigationDrawer(
                 drawerState = drawerState,
+                gesturesEnabled = drawerState.isOpen,
                 drawerContent = {
                     AppDrawerContent(
                         appVersion = appVersion,

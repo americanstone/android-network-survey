@@ -436,7 +436,7 @@ private fun goToMyLocation(viewModel: TowerMapViewModel) {
         Timber.w("The last known location is null")
         return
     }
-    viewModel.mapView.controller.animateTo(
+    viewModel.mapView!!.controller.animateTo(
         GeoPoint(
             lastKnownLocation.latitude,
             lastKnownLocation.longitude
@@ -512,7 +512,7 @@ private suspend fun runTowerQuery(viewModel: TowerMapViewModel) {
     val towers = viewModel.towers.value
 
     towerPoints.forEach {
-        val towerMarker = TowerMarker(viewModel.mapView, it)
+        val towerMarker = TowerMarker(viewModel.mapView!!, it)
 
         if (towers.size >= MAX_TOWERS_ON_MAP) {
             val towerToRemove = towers.first()

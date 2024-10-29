@@ -49,6 +49,8 @@ import com.craxiom.networksurvey.model.NrRecordWrapper;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.ui.cellular.CellularChartViewModel;
 import com.craxiom.networksurvey.ui.cellular.ComposeFunctions;
+import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.CalculationUtils;
 import com.craxiom.networksurvey.util.CellularUtils;
 import com.craxiom.networksurvey.util.ColorUtils;
@@ -92,7 +94,7 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
     private FragmentNetworkDetailsBinding binding;
     private CellularViewModel viewModel;
     private CellularChartViewModel chartViewModel;
-    private CellularRecordWrapper latestServingCellRecord;
+    private SharedViewModel sharedViewModel;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState)
@@ -113,6 +115,7 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
 
         viewModel = new ViewModelProvider(requireActivity()).get(getClass().getName() + subscriptionId, CellularViewModel.class);
         chartViewModel = new ViewModelProvider(requireActivity()).get(getClass().getName() + "cellular_chart" + subscriptionId, CellularChartViewModel.class);
+        sharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
 
         initializeLocationTextView();
 
@@ -597,7 +600,7 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
         {
             if (CellularUtils.isServingCell(cellularRecord.cellularRecord))
             {
-                latestServingCellRecord = cellularRecord;
+                sharedViewModel.updateLatestServingCellInfo(new ServingCellInfo(cellularRecord, subscriptionId));
             }
 
             switch (cellularRecord.cellularProtocol)
