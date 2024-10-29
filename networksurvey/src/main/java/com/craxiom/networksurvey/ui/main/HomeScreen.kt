@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.viewinterop.AndroidViewBinding
 import androidx.navigation.NavController
@@ -23,6 +24,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.craxiom.networksurvey.Application
 import com.craxiom.networksurvey.R
 import com.craxiom.networksurvey.databinding.ContainerBluetoothFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerCellularFragmentBinding
@@ -34,8 +36,11 @@ import com.craxiom.networksurvey.fragments.DashboardFragment
 import com.craxiom.networksurvey.fragments.MainCellularFragment
 import com.craxiom.networksurvey.fragments.MainGnssFragment
 import com.craxiom.networksurvey.fragments.WifiNetworksFragment
+import com.craxiom.networksurvey.model.GnssType
 import com.craxiom.networksurvey.ui.main.appbar.AppBar
 import com.craxiom.networksurvey.ui.main.appbar.AppBarAction
+import com.craxiom.networksurvey.util.LibUIUtils
+import com.craxiom.networksurvey.util.PreferenceUtils
 
 @Composable
 fun HomeScreen(
@@ -44,13 +49,17 @@ fun HomeScreen(
 ) {
     val bottomNavController: NavHostController = rememberNavController()
     var currentScreen by remember { mutableStateOf<MainScreens>(MainScreens.Dashboard) }
+    var showGnssFilterDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             AppBar(
                 drawerState = drawerState,
                 title = getAppBarTitle(currentScreen),
-                appBarActions = getAppBarActions(currentScreen, mainNavController)
+                appBarActions = getAppBarActions(
+                    currentScreen,
+                    mainNavController,
+                    showGnssFilterDialog = { showGnssFilterDialog = it })
             )
         },
         bottomBar = {
@@ -83,6 +92,13 @@ fun HomeScreen(
                 GnssFragmentInCompose()
             }
         }
+    }
+
+    if (showGnssFilterDialog) {
+        ShowSatsFilterDialog(
+            onDismissRequest = { showGnssFilterDialog = false },
+            onSave = { showGnssFilterDialog = false }
+        )
     }
 }
 
@@ -137,7 +153,11 @@ fun getAppBarTitle(currentScreen: MainScreens): Int {
 }
 
 @Composable
-fun getAppBarActions(currentScreen: MainScreens, navController: NavController): List<AppBarAction> {
+fun getAppBarActions(
+    currentScreen: MainScreens,
+    navController: NavController,
+    showGnssFilterDialog: (Boolean) -> Unit
+): List<AppBarAction> {
     return when (currentScreen) {
         MainScreens.Cellular -> listOf(
             AppBarAction(
@@ -170,14 +190,40 @@ fun getAppBarActions(currentScreen: MainScreens, navController: NavController): 
             AppBarAction(
                 icon = R.drawable.ic_filter,
                 description = R.string.menu_option_filter_content_description,
-                onClick = {
-                    // TODO Finish me
-                }
+                onClick = { showGnssFilterDialog(true) }
             )
         )
 
         else -> emptyList()
     }
+}
+
+@Composable
+fun ShowSatsFilterDialog(
+    onDismissRequest: () -> Unit,
+    onSave: () -> Unit
+) {
+    val context = LocalContext.current
+    val gnssTypes = GnssType.values()
+    val len = gnssTypes.size
+
+    // Retrieve the current filter from SharedPreferences
+    val filter = PreferenceUtils.gnssFilter(context, Application.getPrefs())
+
+    val items = Array(len) { index ->
+        LibUIUtils.getGnssDisplayName(context, gnssTypes[index])
+    }
+    val checks = BooleanArray(len) { index ->
+        filter.contains(gnssTypes[index])
+    }
+
+    // Display the GnssFilterDialog with the prepared items and initial checks
+    GnssFilterDialog(
+        initialItems = items,
+        initialChecks = checks,
+        onDismissRequest = onDismissRequest,
+        onSave = onSave
+    )
 }
 
 sealed class MainScreens(val route: String) {
