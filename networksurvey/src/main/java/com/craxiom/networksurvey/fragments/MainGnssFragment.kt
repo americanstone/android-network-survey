@@ -13,6 +13,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.craxiom.networksurvey.Application
@@ -35,6 +37,8 @@ class MainGnssFragment : Fragment(), MenuProvider {
 
     private var menu: Menu? = null
     private var selectedTab: Int = 0
+    private val _tabChangeLiveData = MutableLiveData<Int>()
+    val tabChangeLiveData: LiveData<Int> get() = _tabChangeLiveData
 
     @ExperimentalCoroutinesApi
     val viewModel: SignalInfoViewModel by activityViewModels()
@@ -66,6 +70,7 @@ class MainGnssFragment : Fragment(), MenuProvider {
                 // Update menu based on the selected tab
                 menu?.setGroupVisible(R.id.gnss_status_group, position == 0)
                 selectedTab = position
+                _tabChangeLiveData.value = position
             }
         })
     }

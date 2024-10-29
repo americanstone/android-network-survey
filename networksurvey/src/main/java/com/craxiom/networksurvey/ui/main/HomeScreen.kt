@@ -9,15 +9,19 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.viewinterop.AndroidViewBinding
+import androidx.lifecycle.Observer
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -49,7 +53,10 @@ fun HomeScreen(
 ) {
     val bottomNavController: NavHostController = rememberNavController()
     var currentScreen by remember { mutableStateOf<MainScreens>(MainScreens.Dashboard) }
+    var currentGnssScreen by remember { mutableStateOf(GnssScreen.GNSS_DETAILS) }
     var showGnssFilterDialog by remember { mutableStateOf(false) }
+    var showGnssSortDialog by remember { mutableStateOf(false) }
+
 
     Scaffold(
         topBar = {
@@ -58,8 +65,10 @@ fun HomeScreen(
                 title = getAppBarTitle(currentScreen),
                 appBarActions = getAppBarActions(
                     currentScreen,
+                    currentGnssScreen,
                     mainNavController,
-                    showGnssFilterDialog = { showGnssFilterDialog = it })
+                    showGnssFilterDialog = { showGnssFilterDialog = it },
+                    showGnssSortDialog = { showGnssSortDialog = true })
             )
         },
         bottomBar = {
@@ -89,7 +98,9 @@ fun HomeScreen(
             }
             composable(MainScreens.Gnss.route) {
                 currentScreen = MainScreens.Gnss
-                GnssFragmentInCompose()
+                GnssFragmentInCompose(onGnssScreenChange = { newScreen ->
+                    currentGnssScreen = newScreen
+                })
             }
         }
     }
@@ -97,6 +108,13 @@ fun HomeScreen(
     if (showGnssFilterDialog) {
         ShowSatsFilterDialog(
             onDismissRequest = { showGnssFilterDialog = false },
+            onSave = { showGnssFilterDialog = false }
+        )
+    }
+
+    if (showGnssSortDialog) {
+        GnssSortByDialog(
+            onDismissRequest = { showGnssSortDialog = false },
             onSave = { showGnssFilterDialog = false }
         )
     }
@@ -155,8 +173,10 @@ fun getAppBarTitle(currentScreen: MainScreens): Int {
 @Composable
 fun getAppBarActions(
     currentScreen: MainScreens,
+    currentGnssScreen: GnssScreen,
     navController: NavController,
-    showGnssFilterDialog: (Boolean) -> Unit
+    showGnssFilterDialog: (Boolean) -> Unit,
+    showGnssSortDialog: (Boolean) -> Unit
 ): List<AppBarAction> {
     return when (currentScreen) {
         MainScreens.Cellular -> listOf(
@@ -179,20 +199,28 @@ fun getAppBarActions(
             )
         )
 
-        MainScreens.Gnss -> listOf(
-            AppBarAction(
-                icon = R.drawable.ic_sort,
-                description = R.string.menu_option_sort_by,
-                onClick = {
-                    // TODO Finish me
-                }
-            ),
-            AppBarAction(
-                icon = R.drawable.ic_filter,
-                description = R.string.menu_option_filter_content_description,
-                onClick = { showGnssFilterDialog(true) }
-            )
-        )
+        MainScreens.Gnss -> {
+            return when (currentGnssScreen) {
+                GnssScreen.GNSS_DETAILS -> listOf(
+                    AppBarAction(
+                        icon = R.drawable.ic_sort,
+                        description = R.string.menu_option_sort_by,
+                        onClick = { showGnssSortDialog(true) }
+                    ),
+                    AppBarAction(
+                        icon = R.drawable.ic_filter,
+                        description = R.string.menu_option_filter_content_description,
+                        onClick = { showGnssFilterDialog(true) }
+                    )
+                )
+
+                GnssScreen.GNSS_SKY_VIEW -> listOf(AppBarAction(
+                    icon = R.drawable.ic_filter,
+                    description = R.string.menu_option_filter_content_description,
+                    onClick = { showGnssFilterDialog(true) }
+                ))
+            }
+        }
 
         else -> emptyList()
     }
@@ -204,7 +232,7 @@ fun ShowSatsFilterDialog(
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
-    val gnssTypes = GnssType.values()
+    val gnssTypes = GnssType.entries.toTypedArray()
     val len = gnssTypes.size
 
     // Retrieve the current filter from SharedPreferences
@@ -232,6 +260,11 @@ sealed class MainScreens(val route: String) {
     data object Wifi : MainScreens("wifi_route")
     data object Bluetooth : MainScreens("bluetooth_route")
     data object Gnss : MainScreens("gnss_route")
+}
+
+enum class GnssScreen {
+    GNSS_DETAILS,
+    GNSS_SKY_VIEW
 }
 
 data class BottomNavItem(
@@ -299,8 +332,26 @@ fun BluetoothFragmentInCompose() {
 }
 
 @Composable
-fun GnssFragmentInCompose() {
+fun GnssFragmentInCompose(onGnssScreenChange: (GnssScreen) -> Unit) {
+    var fragment: MainGnssFragment? = null
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val tabChangeObserver = rememberUpdatedState(newValue = { position: Int ->
+        val newScreen = if (position == 0) GnssScreen.GNSS_DETAILS else GnssScreen.GNSS_SKY_VIEW
+        onGnssScreenChange(newScreen)
+    })
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = Observer<Int> { position ->
+            tabChangeObserver.value(position)
+        }
+        fragment?.tabChangeLiveData?.observe(lifecycleOwner, observer)
+        onDispose {
+            fragment?.tabChangeLiveData?.removeObserver(observer)
+        }
+    }
+
     AndroidViewBinding(ContainerGnssFragmentBinding::inflate) {
-        val fragment = gnssFragmentContainerView.getFragment<MainGnssFragment>()
+        fragment = gnssFragmentContainerView.getFragment<MainGnssFragment>()
     }
 }
