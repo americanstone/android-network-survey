@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.app.ActivityCompat
@@ -30,7 +29,6 @@ import timber.log.Timber
  */
 class MainGnssFragment : Fragment() {
 
-    private var menu: Menu? = null
     private var selectedTab: Int = 0
     private val _tabChangeLiveData = MutableLiveData<Int>()
     val tabChangeLiveData: LiveData<Int> get() = _tabChangeLiveData
@@ -59,8 +57,6 @@ class MainGnssFragment : Fragment() {
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
-                // Update menu based on the selected tab
-                menu?.setGroupVisible(R.id.gnss_status_group, position == 0)
                 selectedTab = position
                 _tabChangeLiveData.value = position
             }

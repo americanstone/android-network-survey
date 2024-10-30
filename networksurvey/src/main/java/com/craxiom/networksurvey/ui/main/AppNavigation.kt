@@ -186,7 +186,7 @@ fun QrCodeShareInCompose(paddingValues: PaddingValues) {
 fun TowerMapInCompose(paddingValues: PaddingValues) {
     AndroidViewBinding(
         ContainerTowerMapFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues = paddingValues)
+        //modifier = Modifier.padding(paddingValues = paddingValues)
     ) {
     }
 }

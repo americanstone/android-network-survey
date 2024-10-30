@@ -8,20 +8,15 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.core.view.MenuProvider
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.fragment.findNavController
-import com.craxiom.networksurvey.R
 import com.craxiom.networksurvey.SimChangeReceiver
 import com.craxiom.networksurvey.listeners.ICellularSurveyRecordListener
 import com.craxiom.networksurvey.model.CellularProtocol
@@ -39,7 +34,7 @@ import java.util.Collections
 /**
  * A map view of all the towers in the area as pulled from the NS Tower Service.
  */
-class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRecordListener {
+class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
     private var viewModel: TowerMapViewModel? = null
     private lateinit var composeView: ComposeView
     private var servingCell: ServingCellInfo? = null
@@ -71,8 +66,6 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
     ): View {
         val viewModel = ViewModelProvider(requireActivity())[SharedViewModel::class.java]
         servingCell = viewModel.latestServingCellInfo
-
-        activity?.addMenuProvider(this, getViewLifecycleOwner())
 
         composeView = ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -111,18 +104,6 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
         }
 
         super.onDestroy()
-    }
-
-    override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-        menuInflater.inflate(R.menu.cellular_map_menu, menu)
-    }
-
-    override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-        if (menuItem.itemId == R.id.action_open_tower_map_info) {
-            showTowerMapInfoDialog()
-            return true
-        }
-        return false
     }
 
     override fun onSurveyServiceConnected(service: NetworkSurveyService?) {
