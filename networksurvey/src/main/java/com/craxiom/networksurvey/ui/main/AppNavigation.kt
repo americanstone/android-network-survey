@@ -25,6 +25,7 @@ import com.craxiom.networksurvey.databinding.ContainerWifiSpectrumFragmentBindin
 import com.craxiom.networksurvey.fragments.BLUETOOTH_DATA_KEY
 import com.craxiom.networksurvey.fragments.BluetoothDetailsFragment
 import com.craxiom.networksurvey.fragments.MqttFragment
+import com.craxiom.networksurvey.fragments.TowerMapFragment
 import com.craxiom.networksurvey.fragments.WifiDetailsFragment
 import com.craxiom.networksurvey.fragments.WifiSpectrumFragment
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
@@ -185,9 +186,10 @@ fun QrCodeShareInCompose(paddingValues: PaddingValues) {
 @Composable
 fun TowerMapInCompose(paddingValues: PaddingValues) {
     AndroidViewBinding(
-        ContainerTowerMapFragmentBinding::inflate,
-        //modifier = Modifier.padding(paddingValues = paddingValues)
+        ContainerTowerMapFragmentBinding::inflate
     ) {
+        val fragment = towerMapFragmentContainerView.getFragment<TowerMapFragment>()
+        fragment.setPaddingInsets(paddingValues)
     }
 }
 

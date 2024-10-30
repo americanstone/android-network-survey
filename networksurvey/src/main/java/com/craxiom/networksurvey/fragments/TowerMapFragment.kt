@@ -11,8 +11,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -37,6 +39,7 @@ import java.util.Collections
 class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
     private var viewModel: TowerMapViewModel? = null
     private lateinit var composeView: ComposeView
+    private var paddingValues: PaddingValues = PaddingValues(2.dp, 2.dp, 2.dp, 2.dp)
     private var servingCell: ServingCellInfo? = null
     private var locationListener: LocationListener? = null
     private var simBroadcastReceiver = object : BroadcastReceiver(
@@ -148,6 +151,10 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
         viewModel?.onCellularBatchResults(cellularGroup, subscriptionId)
     }
 
+    fun setPaddingInsets(paddingInsets: PaddingValues) {
+        paddingValues = paddingInsets
+    }
+
     /**
      * Checks if the user has accepted the privacy implications of using the tower map feature. If they have not,
      * then a dialog is shown to them explaining the privacy implications.
@@ -208,6 +215,7 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
     private fun setupComposeView(servingCell: ServingCellInfo?) {
         composeView.setContent {
             viewModel = viewModel()
+            viewModel!!.setPaddingInsets(paddingValues)
             if (servingCell?.servingCell != null && servingCell.servingCell.cellularProtocol != CellularProtocol.NONE) {
                 viewModel!!.setSelectedRadioType(servingCell.servingCell.cellularProtocol.name)
             }

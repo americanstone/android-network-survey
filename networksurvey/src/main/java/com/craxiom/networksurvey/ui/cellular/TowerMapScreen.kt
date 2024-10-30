@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toBitmap
@@ -98,6 +100,8 @@ private const val MAX_TOWERS_ON_MAP = 5000
 @Composable
 internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
 
+    val paddingInsets by viewModel.paddingInsets.collectAsStateWithLifecycle()
+
     val isLoadingInProgress by viewModel.isLoadingInProgress.collectAsStateWithLifecycle()
     val isZoomedOutTooFar by viewModel.isZoomedOutTooFar.collectAsStateWithLifecycle()
     val radio by viewModel.selectedRadioType.collectAsStateWithLifecycle()
@@ -119,6 +123,7 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
     var expanded by remember { mutableStateOf(false) }
     var isFollowing by remember { mutableStateOf(false) }
 
+    val statusBarHeight = paddingInsets.calculateTopPadding()
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -131,10 +136,12 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
                 }
             })
 
+            TopAppBarOverlay(statusBarHeight)
+
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .padding(top = statusBarHeight + 2.dp, end = 16.dp)
             ) {
 
                 // Button to show the DropdownMenu
@@ -169,7 +176,7 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(vertical = paddingInsets.calculateBottomPadding(), horizontal = 16.dp)
             ) {
                 Column {
                     Surface(
@@ -220,7 +227,7 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(16.dp)
+                    .padding(vertical = paddingInsets.calculateBottomPadding(), horizontal = 16.dp)
             ) {
                 if (servingCells.size > 1) {
                     // Only show the drop down if there is more than one option
@@ -290,7 +297,7 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
                 contentAlignment = Alignment.TopCenter,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(8.dp)
+                    .padding(top = statusBarHeight)
             ) {
                 CircularProgressIndicator()
             }
@@ -313,6 +320,7 @@ internal fun OsmdroidMapView(
             viewModel.towerOverlayGroup.setMaxClusteringZoomLevel(14)
 
             mapView.setTileSource(TileSourceFactory.MAPNIK)
+            mapView.zoomController.display.setMarginPadding(.75f, .5f)
             mapView.zoomController.setVisibility(CustomZoomButtonsController.Visibility.ALWAYS)
             mapView.setMultiTouchControls(true)
 
@@ -353,6 +361,17 @@ internal fun OsmdroidMapView(
             viewModel.recreateOverlaysFromTowerData(it)
         }
     )
+}
+
+@Composable
+fun TopAppBarOverlay(height: Dp) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(Color.Black.copy(alpha = 0.25f))
+    ) {
+    }
 }
 
 @Composable

@@ -2,6 +2,8 @@ package com.craxiom.networksurvey.ui.cellular.model
 
 import android.graphics.DashPathEffect
 import android.location.Location
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.unit.dp
 import com.craxiom.networksurvey.model.CellularProtocol
 import com.craxiom.networksurvey.model.CellularRecordWrapper
 import com.craxiom.networksurvey.ui.ASignalChartViewModel
@@ -23,6 +25,9 @@ import java.util.Objects
  * The view model for the Tower Map screen.
  */
 internal class TowerMapViewModel : ASignalChartViewModel() {
+
+    private var _paddingInsets = MutableStateFlow(PaddingValues(0.dp, 0.dp, 0.dp, 0.dp))
+    val paddingInsets = _paddingInsets.asStateFlow()
 
     private var _servingCells =
         MutableStateFlow<HashMap<Int, ServingCellInfo>>(HashMap()) // <SubscriptionId, ServingCellInfo>
@@ -66,6 +71,10 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
     val mapZoomLevel = _mapZoomLevel.asStateFlow()
 
     private val _currentLocation = MutableStateFlow<Location?>(null)
+
+    fun setPaddingInsets(paddingValues: PaddingValues) {
+        _paddingInsets.value = paddingValues
+    }
 
     fun setNoTowersFound(noTowersFound: Boolean) {
         _noTowersFound.value = noTowersFound
