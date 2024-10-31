@@ -6,21 +6,29 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -122,6 +130,7 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
     )
     var expanded by remember { mutableStateOf(false) }
     var isFollowing by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
 
     val statusBarHeight = paddingInsets.calculateTopPadding()
     Surface(
@@ -141,14 +150,27 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = statusBarHeight + 2.dp, end = 16.dp)
+                    .padding(top = statusBarHeight + 4.dp, end = 16.dp)
             ) {
+                Row {
+                    IconButton(onClick = { showInfoDialog = true }) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "About Cellular Tower Map",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .padding(0.dp)
+                                .background(color = MaterialTheme.colorScheme.onSurface)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
 
-                // Button to show the DropdownMenu
-                Button(
-                    onClick = { expanded = true },
-                ) {
-                    Text(text = radio)
+                    Button(
+                        onClick = { expanded = true },
+                    ) {
+                        Text(text = radio, color = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
 
                 DropdownMenu(
@@ -255,6 +277,10 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
                     }
                 }
             }
+        }
+
+        if (showInfoDialog) {
+            TowerMapInfoDialog(onDismiss = { showInfoDialog = false })
         }
     }
 
@@ -683,7 +709,6 @@ private fun getServingCellDisplayString(message: GeneratedMessage): String {
     }
 }
 
-
 @Composable
 fun CircleButtonWithLine(
     isFollowing: Boolean,
@@ -718,6 +743,34 @@ fun CircleButtonWithLine(
             ) {}
         }
     }
+}
+
+@Composable
+fun TowerMapInfoDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Tower Map Information")
+        },
+        text = {
+            Text(
+                text = """
+                    The tower locations are sourced from OpenCelliD ( https://opencellid.org ).
+                    
+                    Please note that these locations may not be accurate as they are generated from crowd-sourced data and based on survey results. The tower locations are provided for your convenience, but they should not be relied upon for precise accuracy. We recommend verifying tower locations through additional sources if accuracy is critical.
+                    
+                    Legend:
+                    - Purple: Your Current Serving Cell
+                    - Blue: Non-Serving Cells
+                """.trimIndent()
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK")
+            }
+        }
+    )
 }
 
 

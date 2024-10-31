@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -51,12 +52,12 @@ fun HomeScreen(
     drawerState: DrawerState,
     mainNavController: NavHostController
 ) {
+    var bottomNavSelectedItem by rememberSaveable { mutableIntStateOf(0) }
     val bottomNavController: NavHostController = rememberNavController()
     var currentScreen by remember { mutableStateOf<MainScreens>(MainScreens.Dashboard) }
     var currentGnssScreen by remember { mutableStateOf(GnssScreen.GNSS_DETAILS) }
     var showGnssFilterDialog by remember { mutableStateOf(false) }
     var showGnssSortDialog by remember { mutableStateOf(false) }
-
 
     Scaffold(
         topBar = {
@@ -72,7 +73,11 @@ fun HomeScreen(
             )
         },
         bottomBar = {
-            BottomNavigationBar(bottomNavController)
+            BottomNavigationBar(
+                bottomNavController,
+                onBottomNavigationItemSelected = { bottomNavSelectedItem = it },
+                bottomNavSelectedItem
+            )
         },
     ) { padding ->
         NavHost(
@@ -121,18 +126,15 @@ fun HomeScreen(
 }
 
 @Composable
-fun BottomNavigationBar(navController: NavController) {
-    var navigationSelectedItem by remember {
-        mutableIntStateOf(0)
-    }
-
+fun BottomNavigationBar(
+    navController: NavController,
+    onBottomNavigationItemSelected: (Int) -> Unit,
+    bottomNavSelectedItem: Int
+) {
     NavigationBar {
-        //getting the list of bottom navigation items for our data class
         BottomNavItem().bottomNavigationItems().forEachIndexed { index, navigationItem ->
-
-            //iterating all items with their respective indexes
             NavigationBarItem(
-                selected = index == navigationSelectedItem,
+                selected = index == bottomNavSelectedItem,
                 label = {
                     Text(navigationItem.label)
                 },
@@ -143,12 +145,15 @@ fun BottomNavigationBar(navController: NavController) {
                     )
                 },
                 onClick = {
-                    navigationSelectedItem = index
+                    onBottomNavigationItemSelected(index)
                     navController.navigate(navigationItem.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }
+                        // Avoid multiple copies of the same destination when
+                        // reselecting the same item
                         launchSingleTop = true
+                        // Restore state when reselecting a previously selected item
                         restoreState = true
                     }
                 }

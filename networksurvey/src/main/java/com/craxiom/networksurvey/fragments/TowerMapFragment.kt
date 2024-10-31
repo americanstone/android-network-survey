@@ -231,27 +231,4 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
                 )
         }
     }
-
-    /**
-     * Shows a dialog to the user explaining where the tower map data comes from and some nuances of it.
-     */
-    private fun showTowerMapInfoDialog() {
-        val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle("Tower Map Information")
-        builder.setMessage(
-            """
-            The tower locations are sourced from OpenCelliD ( https://opencellid.org ).
-            
-            Please note that these locations may not be accurate as they are generated from crowd-sourced data and based on survey results.
-            The tower locations are provided for your convenience, but they should not be relied upon for precise accuracy.
-            We recommend verifying tower locations through additional sources if accuracy is critical.
-            
-            Legend:
-            - Purple: Your Current Serving Cell
-            - Blue: Non-Serving Cells
-        """.trimIndent()
-        )
-        builder.setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
-        builder.show()
-    }
 }
