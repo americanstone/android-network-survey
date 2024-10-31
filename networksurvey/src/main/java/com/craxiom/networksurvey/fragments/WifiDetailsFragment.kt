@@ -158,4 +158,9 @@ class WifiDetailsFragment : AServiceDataFragment(), IWifiSurveyRecordListener {
         val viewModel = ViewModelProvider(nsActivity)[SharedViewModel::class.java]
         viewModel.triggerNavigationToSettings()
     }
+
+    fun navigateBack() {
+        val nsActivity = activity ?: return
+        nsActivity.onBackPressed()
+    }
 }

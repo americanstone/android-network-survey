@@ -3,6 +3,7 @@ package com.craxiom.networksurvey.ui.main.appbar
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,6 +79,33 @@ fun AppBarAction(appBarAction: AppBarAction) {
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.onBackground,
             contentDescription = stringResource(id = appBarAction.description)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TitleBar(title: String, onBackClick: () -> Unit) {
+    TopAppBar(
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        navigationIcon = { BackIcon(onBackClick) },
+    )
+}
+
+@Composable
+private fun BackIcon(onBackClick: () -> Unit) {
+    IconButton(onClick = {
+        onBackClick.invoke()
+    }) {
+        Icon(
+            Icons.AutoMirrored.Rounded.ArrowBack,
+            tint = MaterialTheme.colorScheme.onBackground,
+            contentDescription = "Back button"
         )
     }
 }

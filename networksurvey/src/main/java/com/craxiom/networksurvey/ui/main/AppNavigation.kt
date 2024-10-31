@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerState
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidViewBinding
@@ -31,6 +32,7 @@ import com.craxiom.networksurvey.fragments.WifiSpectrumFragment
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings
 import com.craxiom.networksurvey.model.WifiNetwork
 import com.craxiom.networksurvey.ui.cellular.CalculatorScreen
+import com.craxiom.networksurvey.ui.main.appbar.TitleBar
 import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList
 
 fun NavGraphBuilder.mainGraph(
@@ -46,7 +48,7 @@ fun NavGraphBuilder.mainGraph(
         }
 
         composable(NavDrawerOption.ServerConnection.name) {
-            GrpcFragmentInCompose(paddingValues)
+            GrpcFragmentInCompose(mainNavController)
         }
 
         composable(NavDrawerOption.MqttBrokerConnection.name)
@@ -57,29 +59,33 @@ fun NavGraphBuilder.mainGraph(
                 )
 
             MqttFragmentInCompose(
-                paddingValues = paddingValues,
-                mqttConnectionSettings = mqttConnectionSettings
+                mqttConnectionSettings = mqttConnectionSettings,
+                mainNavController = mainNavController
             )
         }
 
         composable(NavDrawerOption.CellularCalculators.name) {
-            Box(modifier = Modifier.padding(paddingValues = paddingValues)) {
-                CalculatorScreen(viewModel = viewModel())
+            Scaffold(
+                topBar = { TitleBar("Cellular Calculators") { mainNavController.navigateUp() } },
+            ) { innerPadding ->
+                Box(modifier = Modifier.padding(paddingValues = innerPadding)) {
+                    CalculatorScreen(viewModel = viewModel())
+                }
             }
         }
 
         composable(NavDrawerOption.Settings.name) {
-            SettingsFragmentInCompose(paddingValues)
+            SettingsFragmentInCompose(mainNavController)
         }
 
         // --------- Deeper navigation (beyond the nav drawer) --------- //
 
         composable(NavOption.QrCodeScanner.name) {
-            QrCodeScannerInCompose(paddingValues)
+            QrCodeScannerInCompose(mainNavController)
         }
 
         composable(NavOption.QrCodeShare.name) {
-            QrCodeShareInCompose(paddingValues)
+            QrCodeShareInCompose(mainNavController)
         }
 
         composable(NavOption.TowerMap.name) {
@@ -87,7 +93,7 @@ fun NavGraphBuilder.mainGraph(
         }
 
         composable(NavOption.WifiSpectrum.name) {
-            WifiSpectrumInCompose(paddingValues, sharedViewModel.wifiNetworkList)
+            WifiSpectrumInCompose(sharedViewModel.wifiNetworkList, mainNavController)
         }
 
         composable(NavOption.WifiDetails.name) {
@@ -134,57 +140,80 @@ enum class NavOption {
 }
 
 @Composable
-fun GrpcFragmentInCompose(paddingValues: PaddingValues) {
-    AndroidViewBinding(
-        ContainerGrpcFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues = paddingValues)
-    ) {
+fun GrpcFragmentInCompose(mainNavController: NavHostController) {
+    Scaffold(
+        topBar = { TitleBar("Server Connection") { mainNavController.navigateUp() } },
+    ) { innerPadding ->
+        AndroidViewBinding(
+            ContainerGrpcFragmentBinding::inflate,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+        }
     }
 }
 
 @Composable
 fun MqttFragmentInCompose(
-    paddingValues: PaddingValues,
-    mqttConnectionSettings: MqttConnectionSettings?
+    mqttConnectionSettings: MqttConnectionSettings?,
+    mainNavController: NavHostController
 ) {
-    AndroidViewBinding(
-        ContainerMqttFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues)
-    ) {
-        val fragment = mqttFragmentContainerView.getFragment<MqttFragment>()
-        fragment.setMqttConnectionSettings(mqttConnectionSettings)
+    Scaffold(
+        topBar = { TitleBar("MQTT Broker") { mainNavController.navigateUp() } },
+    ) { innerPadding ->
+        AndroidViewBinding(
+            ContainerMqttFragmentBinding::inflate,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            val fragment = mqttFragmentContainerView.getFragment<MqttFragment>()
+            fragment.setMqttConnectionSettings(mqttConnectionSettings)
+        }
     }
 }
 
 @Composable
-fun SettingsFragmentInCompose(paddingValues: PaddingValues) {
-    AndroidViewBinding(
-        ContainerSettingsFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues = paddingValues)
-    ) {
+fun SettingsFragmentInCompose(mainNavController: NavHostController) {
+    Scaffold(
+        topBar = { TitleBar("Settings") { mainNavController.navigateUp() } },
+    ) { innerPadding ->
+        AndroidViewBinding(
+            ContainerSettingsFragmentBinding::inflate,
+            modifier = Modifier.padding(paddingValues = innerPadding)
+        ) {
+        }
     }
 }
 
 @Composable
-fun QrCodeScannerInCompose(paddingValues: PaddingValues) {
-    AndroidViewBinding(
-        ContainerMqttQrCodeScannerFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues = paddingValues)
-    ) {
+fun QrCodeScannerInCompose(mainNavController: NavHostController) {
+    Scaffold(
+        // TODO When navigating back the current settings are lost if they have not been saved, fix this
+        topBar = { TitleBar("QR Code Scanner") { mainNavController.navigateUp() } },
+    ) { innerPadding ->
+        AndroidViewBinding(
+            ContainerMqttQrCodeScannerFragmentBinding::inflate,
+            modifier = Modifier.padding(paddingValues = innerPadding)
+        ) {
+        }
     }
 }
 
 @Composable
-fun QrCodeShareInCompose(paddingValues: PaddingValues) {
-    AndroidViewBinding(
-        ContainerMqttQrCodeShareFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues = paddingValues)
-    ) {
+fun QrCodeShareInCompose(mainNavController: NavHostController) {
+    Scaffold(
+        // TODO When navigating back the current settings are lost if they have not been saved, fix this
+        topBar = { TitleBar("QR Code Share") { mainNavController.navigateUp() } },
+    ) { innerPadding ->
+        AndroidViewBinding(
+            ContainerMqttQrCodeShareFragmentBinding::inflate,
+            modifier = Modifier.padding(paddingValues = innerPadding)
+        ) {
+        }
     }
 }
 
 @Composable
 fun TowerMapInCompose(paddingValues: PaddingValues) {
+    // TODO Add a back button
     AndroidViewBinding(
         ContainerTowerMapFragmentBinding::inflate
     ) {
@@ -194,14 +223,21 @@ fun TowerMapInCompose(paddingValues: PaddingValues) {
 }
 
 @Composable
-fun WifiSpectrumInCompose(paddingValues: PaddingValues, wifiNetworks: WifiNetworkInfoList?) {
-    AndroidViewBinding(
-        ContainerWifiSpectrumFragmentBinding::inflate,
-        modifier = Modifier.padding(paddingValues = paddingValues)
-    ) {
-        if (wifiNetworks != null) {
-            val fragment = wifiSpectrumFragmentContainerView.getFragment<WifiSpectrumFragment>()
-            fragment.setWifiNetworks(wifiNetworks)
+fun WifiSpectrumInCompose(
+    wifiNetworks: WifiNetworkInfoList?,
+    mainNavController: NavHostController
+) {
+    Scaffold(
+        topBar = { TitleBar("Wi-Fi Spectrum") { mainNavController.navigateUp() } },
+    ) { innerPadding ->
+        AndroidViewBinding(
+            ContainerWifiSpectrumFragmentBinding::inflate,
+            modifier = Modifier.padding(paddingValues = innerPadding)
+        ) {
+            if (wifiNetworks != null) {
+                val fragment = wifiSpectrumFragmentContainerView.getFragment<WifiSpectrumFragment>()
+                fragment.setWifiNetworks(wifiNetworks)
+            }
         }
     }
 }

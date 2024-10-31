@@ -165,4 +165,9 @@ class BluetoothDetailsFragment : AServiceDataFragment(), IBluetoothSurveyRecordL
         val viewModel = ViewModelProvider(nsActivity)[SharedViewModel::class.java]
         viewModel.triggerNavigationToSettings()
     }
+
+    fun navigateBack() {
+        val nsActivity = activity ?: return
+        nsActivity.onBackPressed()
+    }
 }
