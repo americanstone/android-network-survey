@@ -62,7 +62,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun NsTheme(
+fun OldNsTheme(
     darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
