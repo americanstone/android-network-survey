@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -106,7 +107,10 @@ private const val MAX_TOWERS_ON_MAP = 5000
  * NS backend.
  */
 @Composable
-internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
+internal fun TowerMapScreen(
+    viewModel: TowerMapViewModel = viewModel(),
+    onBackButtonPressed: () -> Unit
+) {
 
     val paddingInsets by viewModel.paddingInsets.collectAsStateWithLifecycle()
 
@@ -153,6 +157,22 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
                     .padding(top = statusBarHeight + 4.dp, end = 16.dp)
             ) {
                 Row {
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    IconButton(onClick = { onBackButtonPressed() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back button",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .padding(0.dp)
+                                .background(color = MaterialTheme.colorScheme.primary)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
                     IconButton(onClick = { showInfoDialog = true }) {
                         Icon(
                             Icons.Default.Info,
@@ -164,6 +184,7 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
                                 .background(color = MaterialTheme.colorScheme.onSurface)
                         )
                     }
+
                     Spacer(modifier = Modifier.width(16.dp))
 
                     Button(

@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import androidx.navigation.fragment.findNavController
 import com.craxiom.networksurvey.SimChangeReceiver
 import com.craxiom.networksurvey.listeners.ICellularSurveyRecordListener
 import com.craxiom.networksurvey.model.CellularProtocol
@@ -186,7 +185,7 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
         builder.setNegativeButton("Reject") { dialog, _ ->
             PreferenceUtils.setAcceptMapPrivacy(requireContext(), false)
             dialog.dismiss()
-            findNavController().popBackStack() // Go back to the previous fragment // TODO WIP Test this
+            navigateBack()
         }
         builder.show()
     }
@@ -221,7 +220,7 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
             }
 
             NsTheme {
-                TowerMapScreen(viewModel = viewModel!!)
+                TowerMapScreen(viewModel = viewModel!!, onBackButtonPressed = ::navigateBack)
             }
 
             if (servingCell != null)
@@ -230,5 +229,10 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
                     servingCell.subscriptionId
                 )
         }
+    }
+
+    private fun navigateBack() {
+        val nsActivity = activity ?: return
+        nsActivity.onBackPressed()
     }
 }
