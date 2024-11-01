@@ -80,7 +80,16 @@ public class MqttFragment extends AConnectionFragment<NetworkSurveyService.Surve
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
     {
-        return super.onCreateView(inflater, container, savedInstanceState);
+        View view = super.onCreateView(inflater, container, savedInstanceState);
+
+        if (view != null)
+        {
+            Button changeTopicPrefixButton = view.findViewById(R.id.changePrefixButton);
+            changeTopicPrefixButton.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.md_theme_primaryContainer));
+            changeTopicPrefixButton.setTextColor(ContextCompat.getColor(requireContext(), R.color.md_theme_onPrimaryContainer));
+        }
+
+        return view;
     }
 
     public void setMqttConnectionSettings(MqttConnectionSettings mqttConnectionSettings)

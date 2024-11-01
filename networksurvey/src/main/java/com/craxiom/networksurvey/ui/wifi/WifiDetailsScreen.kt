@@ -340,7 +340,6 @@ fun ScanRateInfoButton() {
 
 @Composable
 fun OpenSettingsButton(detailsFragment: WifiDetailsFragment) {
-
     IconButton(onClick = {
         detailsFragment.navigateToSettings()
     }) {
