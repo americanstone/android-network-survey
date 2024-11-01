@@ -56,7 +56,7 @@ private val darkScheme = darkColorScheme(
     onPrimaryContainer = onPrimaryContainerDark,
     secondary = secondaryDark,
     onSecondary = onSecondaryDark,
-    secondaryContainer = secondaryContainerDark,
+    secondaryContainer = secondaryContainerDark, // Bottom Nav Bar Selection
     onSecondaryContainer = onSecondaryContainerDark,
     tertiary = tertiaryDark,
     onTertiary = onTertiaryDark,
@@ -82,7 +82,7 @@ private val darkScheme = darkColorScheme(
     surfaceBright = surfaceBrightDark,
     surfaceContainerLowest = surfaceContainerLowestDark,
     surfaceContainerLow = surfaceContainerLowDark,
-    surfaceContainer = surfaceContainerDark,
+    surfaceContainer = surfaceContainerDark, // Bottom Nav Bar
     surfaceContainerHigh = surfaceContainerHighDark,
     surfaceContainerHighest = surfaceContainerHighestDark,
 )

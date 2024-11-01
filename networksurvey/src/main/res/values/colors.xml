@@ -60,8 +60,8 @@
     <color name="md_theme_onPrimaryContainer">#BCE9FF</color>
     <color name="md_theme_secondary">#B4CAD5</color>
     <color name="md_theme_onSecondary">#1E333C</color>
-    <color name="md_theme_secondaryContainer">#354A53</color>
-    <color name="md_theme_onSecondaryContainer">#D0E6F2</color>
+    <color name="md_theme_secondaryContainer">#303C50</color>
+    <color name="md_theme_onSecondaryContainer">#D4E3F1</color>
     <color name="md_theme_tertiary">#87D6BC</color>
     <color name="md_theme_onTertiary">#00382C</color>
     <color name="md_theme_tertiaryContainer">#005140</color>
@@ -70,12 +70,13 @@
     <color name="md_theme_onError">#690005</color>
     <color name="md_theme_errorContainer">#93000A</color>
     <color name="md_theme_onErrorContainer">#FFDAD6</color>
-    <color name="md_theme_background">#0F1417</color>
+    <color name="md_theme_background">#090D0E</color>
     <color name="md_theme_onBackground">#DEE3E6</color>
-    <color name="md_theme_surface">#07090B</color>
+    <color name="md_theme_surface">#090D0E</color>
+    <color name="md_theme_cardBackground">#181B1F</color>
     <color name="md_theme_onSurface">#DEE3E6</color>
     <color name="md_theme_surfaceVariant">#40484C</color>
-    <color name="md_theme_onSurfaceVariant">#C0C8CC</color>
+    <color name="md_theme_onSurfaceVariant">#CDD0DA</color>
     <color name="md_theme_outline">#8A9296</color>
     <color name="md_theme_outlineVariant">#40484C</color>
     <color name="md_theme_scrim">#000000</color>
@@ -98,7 +99,7 @@
     <color name="md_theme_surfaceBright">#353A3D</color>
     <color name="md_theme_surfaceContainerLowest">#0A0F11</color>
     <color name="md_theme_surfaceContainerLow">#171C1F</color>
-    <color name="md_theme_surfaceContainer">#1B2023</color>
+    <color name="md_theme_surfaceContainer">#10151C</color>
     <color name="md_theme_surfaceContainerHigh">#262B2D</color>
     <color name="md_theme_surfaceContainerHighest">#303538</color>
     <color name="md_theme_primary_mediumContrast">#8ED4F3</color>

@@ -68,7 +68,7 @@
     </style>
 
     <style name="CardViewTheme" parent="CardView.Dark">
-        <item name="cardBackgroundColor">@color/md_theme_surfaceContainer</item>
+        <item name="cardBackgroundColor">@color/md_theme_cardBackground</item>
         <item name="android:layout_gravity">start</item>
         <item name="android:layout_margin">@dimen/small_margin</item>
         <item name="cardCornerRadius">4dp</item>
