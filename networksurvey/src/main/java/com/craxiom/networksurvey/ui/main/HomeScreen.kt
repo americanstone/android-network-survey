@@ -59,6 +59,16 @@ fun HomeScreen(
     var showGnssFilterDialog by remember { mutableStateOf(false) }
     var showGnssSortDialog by remember { mutableStateOf(false) }
 
+    bottomNavController.addOnDestinationChangedListener { _, destination, _ ->
+        BottomNavItem().bottomNavigationItems().forEachIndexed { index, item ->
+            // Only needed to update the selected item when hitting back from a bottom tab (which
+            // takes you to the dashboard tab)
+            if (destination.route == item.route) {
+                bottomNavSelectedItem = index
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             AppBar(
