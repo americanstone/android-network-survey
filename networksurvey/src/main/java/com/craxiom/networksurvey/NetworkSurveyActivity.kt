@@ -14,26 +14,18 @@ import android.os.IBinder
 import android.provider.Settings
 import android.text.method.LinkMovementMethod
 import android.view.LayoutInflater
-import android.view.View
 import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.NavController
-import androidx.navigation.NavDestination
-import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.AppBarConfiguration.Builder
 import androidx.navigation.ui.NavigationUI.navigateUp
-import androidx.navigation.ui.NavigationUI.setupActionBarWithNavController
-import androidx.navigation.ui.NavigationUI.setupWithNavController
 import androidx.preference.PreferenceManager
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants
 import com.craxiom.networksurvey.listeners.IGnssFailureListener
@@ -45,8 +37,6 @@ import com.craxiom.networksurvey.ui.main.MainCompose
 import com.craxiom.networksurvey.util.NsUtils
 import com.craxiom.networksurvey.util.PreferenceUtils
 import com.craxiom.networksurvey.util.ToggleLoggingTask
-import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.android.material.navigation.NavigationView
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import java.util.function.Function
@@ -58,8 +48,6 @@ import java.util.function.Supplier
  */
 @AndroidEntryPoint
 class NetworkSurveyActivity : AppCompatActivity() {
-    private var drawerLayout: DrawerLayout? = null
-    var navController: NavController? = null
 
     private var surveyServiceConnection: SurveyServiceConnection? = null
     private var networkSurveyService: NetworkSurveyService? = null
@@ -68,7 +56,6 @@ class NetworkSurveyActivity : AppCompatActivity() {
     private var turnOnBluetoothLoggingOnNextServiceConnection = false
     private var turnOnGnssLoggingOnNextServiceConnection = false
     private var turnOnCdrLoggingOnNextServiceConnection = false
-    private var appBarConfiguration: AppBarConfiguration? = null
     private var gnssFailureListener: IGnssFailureListener? = null
     private var hasRequestedPermissions = false
 
@@ -76,16 +63,9 @@ class NetworkSurveyActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES) // Force Dark Mode
-        //setContentView(R.layout.main_fragment_container)
         setContent {
             MainCompose(appVersion = NsUtils.getAppVersionName(this))
         }
-
-        // Set up the traditional NavHostFragment
-        /*val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragment_container_view) as NavHostFragment
-        navController = navHostFragment.navController*/
-
-        // TODO Delete me setSupportActionBar(findViewById(R.id.toolbar))
 
         // Install the defaults specified in the XML preferences file, this is only done the first time the app is opened
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false)
@@ -116,8 +96,6 @@ class NetworkSurveyActivity : AppCompatActivity() {
             false,
             applicationContext
         )
-
-        // TODO Delete me setupNavigation()
 
         surveyServiceConnection = SurveyServiceConnection()
 
@@ -215,10 +193,6 @@ class NetworkSurveyActivity : AppCompatActivity() {
     override fun onDestroy() {
         networkSurveyService = null
         super.onDestroy()
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        return navigateUp(navController!!, appBarConfiguration!!) || super.onSupportNavigateUp()
     }
 
     override fun onRequestPermissionsResult(
@@ -382,7 +356,7 @@ class NetworkSurveyActivity : AppCompatActivity() {
      * @return True if the device has GPS capabilities, and location services are enabled on the device. False otherwise.
      */
     private fun checkLocationProvider(informUser: Boolean): Boolean {
-        val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
+        val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager?
         if (locationManager == null) {
             Timber.w("Could not get the location manager.  Skipping checking the location provider")
             return false
@@ -541,62 +515,6 @@ class NetworkSurveyActivity : AppCompatActivity() {
             // app is in the background. We catch this here so that we can prevent the app from crashing.
             Timber.w(e, "Could not start the Network Survey service.")
         }
-    }
-
-    /**
-     * Setup the navigation drawer and the bottom navigation view.
-     *
-     * @since 0.0.9
-     */
-    private fun setupNavigation() {
-        drawerLayout = findViewById(R.id.drawer_layout)
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
-        val navigationView = findViewById<NavigationView>(R.id.navigation_view)
-
-        val navHostFragment =
-            supportFragmentManager.findFragmentById(R.id.main_content) as NavHostFragment?
-        navController = navHostFragment!!.navController
-
-        appBarConfiguration = Builder(
-            R.id.main_dashboard_fragment,
-            R.id.main_cellular_fragment,
-            R.id.main_wifi_fragment,
-            R.id.main_bluetooth_fragment,
-            R.id.main_gnss_fragment
-        )
-            .setOpenableLayout(drawerLayout)
-            .build()
-
-        setupActionBarWithNavController(this, navController!!, appBarConfiguration!!)
-
-        setupWithNavController(navigationView, navController!!)
-        setupWithNavController(bottomNav, navController!!)
-
-        navController!!.addOnDestinationChangedListener { controller: NavController?, destination: NavDestination, arguments: Bundle? ->
-            val destinationId = destination.id
-            if (destinationId == R.id.main_dashboard_fragment || destinationId == R.id.main_cellular_fragment || destinationId == R.id.main_wifi_fragment || destinationId == R.id.main_bluetooth_fragment || destinationId == R.id.main_gnss_fragment) {
-                bottomNav.visibility = View.VISIBLE
-            } else {
-                bottomNav.visibility = View.GONE
-            }
-        }
-
-        val callback: OnBackPressedCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // For whatever reason calling navigateUp from one of the top level destinations results in the
-                // navigation drawer being opened.  Therefore, if the current destination is a top level we have custom
-                // code here to move this activity to the back stack.
-                val currentDestination = navController!!.currentDestination
-                if (currentDestination != null &&
-                    (currentDestination.id == R.id.main_dashboard_fragment || currentDestination.id == R.id.main_cellular_fragment || currentDestination.id == R.id.main_wifi_fragment || currentDestination.id == R.id.main_bluetooth_fragment || currentDestination.id == R.id.main_gnss_fragment)
-                ) {
-                    moveTaskToBack(true)
-                } else {
-                    navigateUp(navController!!, appBarConfiguration!!)
-                }
-            }
-        }
-        onBackPressedDispatcher.addCallback(this, callback)
     }
 
     /**
