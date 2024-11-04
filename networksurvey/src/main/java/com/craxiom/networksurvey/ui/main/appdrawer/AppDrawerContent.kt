@@ -71,13 +71,6 @@ fun <T : Enum<T>> AppDrawerContent(
                 ) {
                     items(menuItems) { item ->
                         AppDrawerItem(item = item) { navOption ->
-                            if (currentPick == navOption) {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                }
-                                return@AppDrawerItem
-                            }
-
                             currentPick = navOption
                             coroutineScope.launch {
                                 drawerState.close()
@@ -93,13 +86,6 @@ fun <T : Enum<T>> AppDrawerContent(
 
                     items(externalLinks) { item ->
                         AppDrawerItem(item = item) { navOption ->
-                            if (currentPick == navOption) {
-                                coroutineScope.launch {
-                                    drawerState.close()
-                                }
-                                return@AppDrawerItem
-                            }
-
                             currentPick = navOption
                             coroutineScope.launch {
                                 drawerState.close()
