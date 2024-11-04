@@ -751,7 +751,7 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
         try
         {
             final ConnectionHandshakeGrpc.ConnectionHandshakeBlockingStub blockingStub = ConnectionHandshakeGrpc
-                    .newBlockingStub(channel).withDeadlineAfter(10, TimeUnit.SECONDS); // TODO make the timeout a user preference
+                    .newBlockingStub(channel).withDeadlineAfter(10, TimeUnit.SECONDS);
 
             final ConnectionReply connectionReply = blockingStub.startConnection(ConnectionRequest.newBuilder().build());
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.31](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.31) - 2024-11-04
+
+* UI updates throughout the app.
+* Sets the nonTerrestrialNetwork field in the phone state message (MQTT, gRPC, CSV, and GeoPackage)
+* Prevent a crash when viewing the GNSS UI when no GPS provider is available on the device.
+* Upgrade to SDK 35 (Android 15).
+* Leverage new Android 15 getRejectCause API.
+* Prevent really small speed values so that they are not displayed in scientific notation in JSON messages.
+* Add additional permission checks for the other paths that turn on CDR logging to improve the UX and prevent crashes.
+* Go to the devices location when the tower map is first opened and the info dialog is accepted.
+
 ## [1.30.2](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.30.2) - 2024-09-26
 
 * Log the battery percentage in the device status message CSV file as an int instead of a protobuf value.
