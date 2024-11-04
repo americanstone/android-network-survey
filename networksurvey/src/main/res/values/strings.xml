@@ -356,6 +356,8 @@ but work independently, so you have full control over how you handle your data.<
     <string name="stream_device_status_title">Stream Device Status</string>
     <string name="mqtt_topic_prefix_title">MQTT Topic Prefix</string>
 
+    <string name="help_title">Help?</string>
+
     <!-- App Restriction Constants -->
     <string name="mqtt_start_on_boot_title">MQTT Start at Boot</string>
     <string name="mqtt_start_on_boot_description">If true, when the phone boots an attempt will be made to connect to the MDM configured MQTT broker</string>
