@@ -33,30 +33,6 @@ import com.craxiom.networksurvey.model.GnssType
 import com.craxiom.networksurvey.util.PreferenceUtils
 
 @Composable
-fun GnssFailureDialog(onDismiss: () -> Unit, onConfirm: (Boolean) -> Unit) {
-    val checkedState = remember { mutableStateOf(false) }
-
-    // TODO Validate that this dialog works
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(checkedState.value) }
-            ) { Text("OK") }
-        },
-        text = {
-            Column {
-                Text("GNSS Failure")
-                Checkbox(
-                    checked = checkedState.value,
-                    onCheckedChange = { checkedState.value = it }
-                )
-            }
-        }
-    )
-}
-
-@Composable
 fun GnssFilterDialog(
     initialItems: Array<String>,
     initialChecks: BooleanArray,

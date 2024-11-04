@@ -23,16 +23,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.navigation.NavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.NavigationUI.navigateUp
 import androidx.preference.PreferenceManager
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants
 import com.craxiom.networksurvey.listeners.IGnssFailureListener
 import com.craxiom.networksurvey.services.GrpcConnectionService
 import com.craxiom.networksurvey.services.NetworkSurveyService
 import com.craxiom.networksurvey.services.NetworkSurveyService.SurveyServiceBinder
-import com.craxiom.networksurvey.ui.main.GnssFailureDialog
 import com.craxiom.networksurvey.ui.main.MainCompose
 import com.craxiom.networksurvey.util.NsUtils
 import com.craxiom.networksurvey.util.PreferenceUtils
@@ -103,37 +99,35 @@ class NetworkSurveyActivity : AppCompatActivity() {
 
         gnssFailureListener = IGnssFailureListener {
             try {
-                setContent {
-                    GnssFailureDialog( // FIXME Do this for real
-                        onDismiss = { }
-                    ) { }
-                }
+                runOnUiThread {
+                    Timber.e("BLAH BLAH BLAH")
+                    val fragmentView =
+                        LayoutInflater.from(this).inflate(R.layout.gnss_failure, null)
 
-                val fragmentView = LayoutInflater.from(this).inflate(R.layout.gnss_failure, null)
-
-                val gnssFailureDialog = AlertDialog.Builder(this)
-                    .setView(fragmentView)
-                    .setPositiveButton(R.string.ok) { dialog: DialogInterface?, id: Int ->
-                        val rememberDecisionCheckBox =
-                            fragmentView.findViewById<CheckBox>(R.id.failureRememberDecisionCheckBox)
-                        val checked = rememberDecisionCheckBox.isChecked
-                        if (checked) {
-                            PreferenceUtils.saveBoolean(
-                                Application.get()
-                                    .getString(R.string.pref_key_ignore_raw_gnss_failure), true
-                            )
-                            // No need for GNSS failure updates anymore
-                            if (networkSurveyService != null) {
-                                networkSurveyService!!.clearGnssFailureListener()
+                    val gnssFailureDialog = AlertDialog.Builder(this)
+                        .setView(fragmentView)
+                        .setPositiveButton(R.string.ok) { _: DialogInterface?, _: Int ->
+                            val rememberDecisionCheckBox =
+                                fragmentView.findViewById<CheckBox>(R.id.failureRememberDecisionCheckBox)
+                            val checked = rememberDecisionCheckBox.isChecked
+                            if (checked) {
+                                PreferenceUtils.saveBoolean(
+                                    Application.get()
+                                        .getString(R.string.pref_key_ignore_raw_gnss_failure), true
+                                )
+                                // No need for GNSS failure updates anymore
+                                if (networkSurveyService != null) {
+                                    networkSurveyService!!.clearGnssFailureListener()
+                                }
                             }
                         }
-                    }
-                    .create()
+                        .create()
 
-                gnssFailureDialog.show()
-                val viewById =
-                    gnssFailureDialog.findViewById<TextView>(R.id.failureDescriptionTextView)
-                if (viewById != null) viewById.movementMethod = LinkMovementMethod.getInstance()
+                    gnssFailureDialog.show()
+                    val viewById =
+                        gnssFailureDialog.findViewById<TextView>(R.id.failureDescriptionTextView)
+                    if (viewById != null) viewById.movementMethod = LinkMovementMethod.getInstance()
+                }
             } catch (t: Throwable) {
                 Timber.e(t, "Something went wrong when trying to show the GNSS Failure Dialog")
             }

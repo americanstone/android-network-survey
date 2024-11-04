@@ -498,7 +498,7 @@ but work independently, so you have full control over how you handle your data.<
     <!-- GNSS Failure Alert -->
     <string name="app_icon_description">App Icon</string>
     <string name="not_supported_title">GNSS Features May Not Work</string>
-    <string name="not_supported_description">Network Survey is not receiving raw GNSS measurements from the phone, which are required for generating the GNSS GeoPackage files, or streaming GNSS records over MQTT. For more information and a list of devices that support raw GNSS, consult Android\'s <a href="https://developer.android.com/guide/topics/sensors/gnss">Raw GNSS Measurements</a> guide.</string>
+    <string name="not_supported_description">Network Survey is not receiving raw GNSS measurements from the phone, which are required for generating the GNSS GeoPackage/CSV files, or streaming GNSS records over MQTT. For more information and a list of devices that support raw GNSS, consult Android\'s <a href="https://developer.android.com/guide/topics/sensors/gnss">Raw GNSS Measurements</a> guide.</string>
     <string name="remember_my_decision">Don\'t ask me again</string>
 
     <!-- GNSS Status View -->
