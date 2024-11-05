@@ -13,6 +13,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import androidx.navigation.navDeepLink
 import com.craxiom.messaging.BluetoothRecordData
 import com.craxiom.networksurvey.databinding.ContainerBluetoothDetailsFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerGrpcFragmentBinding
@@ -47,7 +48,12 @@ fun NavGraphBuilder.mainGraph(
             HomeScreen(drawerState, mainNavController = mainNavController)
         }
 
-        composable(NavDrawerOption.ServerConnection.name) {
+        composable(
+            NavDrawerOption.ServerConnection.name,
+            deepLinks = listOf(navDeepLink {
+                uriPattern = "http://craxiom.com/grpc_server_connection"
+            })
+        ) {
             GrpcFragmentInCompose(mainNavController)
         }
 

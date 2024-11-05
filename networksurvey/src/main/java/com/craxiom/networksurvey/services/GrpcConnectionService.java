@@ -6,11 +6,13 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.app.TaskStackBuilder;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ServiceInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
@@ -20,7 +22,6 @@ import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
-import androidx.navigation.NavDeepLinkBuilder;
 
 import com.craxiom.messaging.BluetoothRecord;
 import com.craxiom.messaging.CdmaRecord;
@@ -49,6 +50,7 @@ import com.craxiom.messaging.grpc.WifiBeaconSurveyResponse;
 import com.craxiom.messaging.grpc.WirelessSurveyGrpc;
 import com.craxiom.mqttlibrary.IConnectionStateListener;
 import com.craxiom.mqttlibrary.connection.ConnectionState;
+import com.craxiom.networksurvey.NetworkSurveyActivity;
 import com.craxiom.networksurvey.R;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
 import com.craxiom.networksurvey.fragments.model.GrpcConnectionSettings;
@@ -810,10 +812,12 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
             return;
         }
 
-        PendingIntent pendingIntent = new NavDeepLinkBuilder(this)
-                .setGraph(R.navigation.nav_graph)
-                .setDestination(R.id.connection_fragment)
-                .createPendingIntent();
+        Intent intent = new Intent(this, NetworkSurveyActivity.class);
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("http://craxiom.com/grpc_server_connection"));
+
+        TaskStackBuilder taskStackBuilder = TaskStackBuilder.create(this).addNextIntentWithParentStack(intent);
+        PendingIntent pendingIntent = taskStackBuilder.getPendingIntent(1234, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         final CharSequence notificationText = getNotificationText();
 
