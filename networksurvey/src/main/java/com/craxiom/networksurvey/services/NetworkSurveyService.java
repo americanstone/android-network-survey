@@ -1192,6 +1192,9 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
             // Use the smallest scan rate set by the user for the active scanning types
             if (smallestScanRate > 20_000) smallestScanRate = smallestScanRate / 2;
 
+            long scanRateCeiling = GpsListener.LOCATION_AGE_THRESHOLD_MS - 20_000;
+            if (smallestScanRate > scanRateCeiling) smallestScanRate = (int) scanRateCeiling;
+
             if (smallestScanRate < 8_000) smallestScanRate = 8_000;
 
             Timber.d("Setting the location update rate to %d", smallestScanRate);
