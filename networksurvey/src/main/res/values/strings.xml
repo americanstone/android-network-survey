@@ -107,6 +107,8 @@ but work independently, so you have full control over how you handle your data.<
     <!-- LTE and Common labels -->
     <string name="mcc_label">MCC</string>
     <string name="mnc_label">MNC</string>
+    <string name="mcc_mnc_label">MCC/MNC</string>
+    <string name="mcc_mnc_value">%1$s/%2$s</string>
     <string name="tac_label">TAC</string>
     <string name="cid_label">CID</string>
     <string name="enb_id_label">eNB ID</string>

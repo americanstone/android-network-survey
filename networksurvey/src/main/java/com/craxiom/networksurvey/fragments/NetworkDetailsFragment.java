@@ -253,8 +253,8 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
 
         viewModel.getServingCellProtocol().observe(viewLifecycleOwner, this::updateServingCellProtocol);
 
-        viewModel.getMcc().observe(viewLifecycleOwner, s -> binding.mcc.setText(s));
-        viewModel.getMnc().observe(viewLifecycleOwner, s -> binding.mnc.setText(s));
+        viewModel.getMcc().observe(viewLifecycleOwner, s -> binding.plmn.setText(getString(R.string.mcc_mnc_value, s, viewModel.getMnc().getValue())));
+        viewModel.getMnc().observe(viewLifecycleOwner, s -> binding.plmn.setText(getString(R.string.mcc_mnc_value, viewModel.getMcc().getValue(), s)));
         viewModel.getAreaCode().observe(viewLifecycleOwner, s -> binding.tac.setText(s));
         viewModel.getCellId().observe(viewLifecycleOwner, this::updateCellIdentity);
         viewModel.getChannelNumber().observe(viewLifecycleOwner, s -> binding.earfcn.setText(s));
