@@ -136,8 +136,10 @@ public class GpsListener implements LocationListener
         }
     }
 
-    public Location getLatestLocation()
+    public synchronized Location getLatestLocation()
     {
+        if (latestLocation == null) return null;
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         {
             long locationTimeAge = latestLocation.getElapsedRealtimeAgeMillis();
@@ -160,7 +162,7 @@ public class GpsListener implements LocationListener
      *
      * @param newLocation The newly provided location.
      */
-    private void updateLocation(Location newLocation)
+    private synchronized void updateLocation(Location newLocation)
     {
         latestLocation = newLocation;
 
