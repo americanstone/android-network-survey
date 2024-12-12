@@ -70,7 +70,7 @@ class CalculatorViewModel : ViewModel() {
     val enbIdOutput: StateFlow<String> = _enbIdOutput.asStateFlow()
 
     private val _lteSectorIdOutput = MutableStateFlow("")
-    val lteSectorIdOutput: StateFlow<String> = _nrSectorIdOutput.asStateFlow()
+    val lteSectorIdOutput: StateFlow<String> = _lteSectorIdOutput.asStateFlow()
 
     private val _pssOutput = MutableStateFlow("")
     val pssOutput: StateFlow<String> = _pssOutput.asStateFlow()
