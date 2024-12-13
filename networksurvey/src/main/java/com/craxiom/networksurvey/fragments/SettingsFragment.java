@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.preference.DropDownPreference;
 import androidx.preference.EditTextPreference;
+import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceScreen;
@@ -143,6 +144,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 Integer.parseInt(sharedPreferences.getString(key, ""));
             } catch (Exception e)
             {
+                Timber.e(e, "The new value for %s is not a valid integer. Reverting to the default value of %d", key, defaultValue);
                 final SharedPreferences.Editor edit = sharedPreferences.edit();
                 edit.putString(key, String.valueOf(defaultValue));
                 edit.apply();
@@ -233,14 +235,14 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_AUTO_START_GNSS_LOGGING);
         updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_AUTO_START_CDR_LOGGING);
         updateLogRolloverSizeForMdm(preferenceScreen, mdmProperties);
-        updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_LOG_FILE_TYPE);
+        updateListProviderPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_LOG_FILE_TYPE);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_CELLULAR_SCAN_INTERVAL_SECONDS);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_WIFI_SCAN_INTERVAL_SECONDS);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_BLUETOOTH_SCAN_INTERVAL_SECONDS);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_GNSS_SCAN_INTERVAL_SECONDS);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_DEVICE_STATUS_SCAN_INTERVAL_SECONDS);
         updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_MQTT_START_ON_BOOT);
-        updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_LOCATION_PROVIDER);
+        updateListProviderPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_LOCATION_PROVIDER);
         updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_ALLOW_INTENT_CONTROL);
     }
 
@@ -303,6 +305,43 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                     final String mdmValue = String.valueOf(mdmIntProperty);
 
                     preference.setSummaryProvider(pref -> mdmValue);
+
+                    getPreferenceManager().getSharedPreferences()
+                            .edit()
+                            .putString(preferenceKey, String.valueOf(mdmIntProperty))
+                            .apply();
+                }
+            }
+        } catch (Exception e)
+        {
+            Timber.wtf(e, "Could not find the int preference or update the UI component for %s", preferenceKey);
+        }
+    }
+
+    /**
+     * Updates a list preference with an MDM value, if it exists. The shared preferences are
+     * also updated, so that values are retained when MDM control is off.
+     *
+     * @param preferenceScreen The preference screen
+     * @param mdmProperties    The map of mdm provided properties.
+     * @param preferenceKey    The preference key
+     * @since 0.4.0
+     */
+    private void updateListProviderPreferenceForMdm(PreferenceScreen preferenceScreen, Bundle mdmProperties, String preferenceKey)
+    {
+        try
+        {
+            final ListPreference preference = preferenceScreen.findPreference(preferenceKey);
+
+            if (preference != null && mdmProperties.containsKey(preferenceKey))
+            {
+                final int mdmIntProperty = mdmProperties.getInt(preferenceKey, -1);
+
+                if (mdmIntProperty != -1)
+                {
+                    preference.setEnabled(false);
+                    preference.setValueIndex(mdmIntProperty);
+                    Timber.i("Setting the location provider to %d", mdmIntProperty);
 
                     getPreferenceManager().getSharedPreferences()
                             .edit()

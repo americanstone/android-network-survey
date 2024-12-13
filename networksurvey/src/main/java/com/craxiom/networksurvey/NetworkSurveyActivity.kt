@@ -100,7 +100,6 @@ class NetworkSurveyActivity : AppCompatActivity() {
         gnssFailureListener = IGnssFailureListener {
             try {
                 runOnUiThread {
-                    Timber.e("BLAH BLAH BLAH")
                     val fragmentView =
                         LayoutInflater.from(this).inflate(R.layout.gnss_failure, null)
 
