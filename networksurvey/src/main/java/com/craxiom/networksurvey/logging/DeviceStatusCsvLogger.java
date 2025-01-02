@@ -86,20 +86,20 @@ public class DeviceStatusCsvLogger extends CsvRecordLogger implements IDeviceSta
 
         return new String[]{
                 data.getDeviceTime(),
-                String.valueOf(data.getLatitude()),
-                String.valueOf(data.getLongitude()),
+                trimToSixDecimalPlaces(data.getLatitude()),
+                trimToSixDecimalPlaces(data.getLongitude()),
                 String.valueOf(data.getAltitude()),
                 String.valueOf(data.getSpeed()),
                 String.valueOf(data.getAccuracy()),
                 data.hasBatteryLevelPercent() ? String.valueOf(data.getBatteryLevelPercent().getValue()) : "",
 
-                hasGnssLocation ? String.valueOf(gnssLatitude) : "",
-                hasGnssLocation ? String.valueOf(gnssLongitude) : "",
+                hasGnssLocation ? trimToSixDecimalPlaces(gnssLatitude) : "",
+                hasGnssLocation ? trimToSixDecimalPlaces(gnssLongitude) : "",
                 hasGnssLocation ? String.valueOf(data.getGnssAltitude()) : "",
                 hasGnssLocation ? String.valueOf(data.getGnssAccuracy()) : "",
 
-                hasNetworkLocation ? String.valueOf(networkLatitude) : "",
-                hasNetworkLocation ? String.valueOf(networkLongitude) : "",
+                hasNetworkLocation ? trimToSixDecimalPlaces(networkLatitude) : "",
+                hasNetworkLocation ? trimToSixDecimalPlaces(networkLongitude) : "",
                 hasNetworkLocation ? String.valueOf(data.getNetworkAltitude()) : "",
                 hasNetworkLocation ? String.valueOf(data.getNetworkAccuracy()) : "",
                 data.getDeviceSerialNumber()

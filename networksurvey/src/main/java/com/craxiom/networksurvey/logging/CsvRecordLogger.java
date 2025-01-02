@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import timber.log.Timber;
@@ -424,5 +425,16 @@ public abstract class CsvRecordLogger
         {
             recordCount.set(0);
         }
+    }
+
+    /**
+     * Trims a double (location) to six decimal places.
+     *
+     * @param value The double to trim.
+     * @return The trimmed double as a string.
+     */
+    String trimToSixDecimalPlaces(double value)
+    {
+        return String.format(Locale.getDefault(), "%.6f", value);
     }
 }

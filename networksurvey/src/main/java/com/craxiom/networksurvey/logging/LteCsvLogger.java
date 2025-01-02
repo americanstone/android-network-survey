@@ -90,8 +90,8 @@ public class LteCsvLogger extends CsvRecordLogger implements ICellularSurveyReco
 
         return new String[]{
                 data.getDeviceTime(),
-                String.valueOf(data.getLatitude()),
-                String.valueOf(data.getLongitude()),
+                trimToSixDecimalPlaces(data.getLatitude()),
+                trimToSixDecimalPlaces(data.getLongitude()),
                 String.valueOf(data.getAltitude()),
                 String.valueOf(data.getSpeed()),
                 String.valueOf(data.getAccuracy()),
