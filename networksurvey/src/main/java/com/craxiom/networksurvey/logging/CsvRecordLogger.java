@@ -18,8 +18,10 @@ import org.apache.commons.csv.CSVPrinter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,6 +47,8 @@ public abstract class CsvRecordLogger
      * during rollover.
      */
     protected final Object csvFileLock = new Object();
+
+    private final DecimalFormat twoDecimalFormat = new DecimalFormat("#.##");
 
     private Context applicationContext;
     final Handler handler;
@@ -75,6 +79,8 @@ public abstract class CsvRecordLogger
         this.logDirectoryName = logDirectoryName;
         this.fileNamePrefix = fileNamePrefix;
         this.lazyFileCreation = lazyFileCreation;
+
+        twoDecimalFormat.setRoundingMode(RoundingMode.CEILING);
     }
 
     public void onDestroy()
@@ -428,7 +434,7 @@ public abstract class CsvRecordLogger
     }
 
     /**
-     * Trims a double (location) to six decimal places.
+     * Trims a double (location) to six decimal places, not removing extra zeros.
      *
      * @param value The double to trim.
      * @return The trimmed double as a string.
@@ -436,5 +442,16 @@ public abstract class CsvRecordLogger
     String trimToSixDecimalPlaces(double value)
     {
         return String.format(Locale.getDefault(), "%.6f", value);
+    }
+
+    /**
+     * Rounds a double to 2 decimal places, removing extra zeros.
+     *
+     * @param value The double to round.
+     * @return The rounded double as a string.
+     */
+    String roundToTwoDecimalPlaces(double value)
+    {
+        return twoDecimalFormat.format(value);
     }
 }

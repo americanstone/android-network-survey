@@ -88,20 +88,20 @@ public class DeviceStatusCsvLogger extends CsvRecordLogger implements IDeviceSta
                 data.getDeviceTime(),
                 trimToSixDecimalPlaces(data.getLatitude()),
                 trimToSixDecimalPlaces(data.getLongitude()),
-                String.valueOf(data.getAltitude()),
-                String.valueOf(data.getSpeed()),
-                String.valueOf(data.getAccuracy()),
+                roundToTwoDecimalPlaces(data.getAltitude()),
+                roundToTwoDecimalPlaces(data.getSpeed()),
+                roundToTwoDecimalPlaces(data.getAccuracy()),
                 data.hasBatteryLevelPercent() ? String.valueOf(data.getBatteryLevelPercent().getValue()) : "",
 
                 hasGnssLocation ? trimToSixDecimalPlaces(gnssLatitude) : "",
                 hasGnssLocation ? trimToSixDecimalPlaces(gnssLongitude) : "",
-                hasGnssLocation ? String.valueOf(data.getGnssAltitude()) : "",
-                hasGnssLocation ? String.valueOf(data.getGnssAccuracy()) : "",
+                hasGnssLocation ? roundToTwoDecimalPlaces(data.getGnssAltitude()) : "",
+                hasGnssLocation ? roundToTwoDecimalPlaces(data.getGnssAccuracy()) : "",
 
                 hasNetworkLocation ? trimToSixDecimalPlaces(networkLatitude) : "",
                 hasNetworkLocation ? trimToSixDecimalPlaces(networkLongitude) : "",
-                hasNetworkLocation ? String.valueOf(data.getNetworkAltitude()) : "",
-                hasNetworkLocation ? String.valueOf(data.getNetworkAccuracy()) : "",
+                hasNetworkLocation ? roundToTwoDecimalPlaces(data.getNetworkAltitude()) : "",
+                hasNetworkLocation ? roundToTwoDecimalPlaces(data.getNetworkAccuracy()) : "",
                 data.getDeviceSerialNumber()
         };
     }
