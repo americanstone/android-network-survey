@@ -73,7 +73,7 @@
     <color name="md_theme_background">#090D0E</color>
     <color name="md_theme_onBackground">#DEE3E6</color>
     <color name="md_theme_surface">#090D0E</color>
-    <color name="md_theme_cardBackground">#262B2D</color>
+    <color name="md_theme_cardBackground">#191E21</color>
     <color name="md_theme_onSurface">#DEE3E6</color>
     <color name="md_theme_surfaceVariant">#40484C</color>
     <color name="md_theme_onSurfaceVariant">#CDD0DA</color>
