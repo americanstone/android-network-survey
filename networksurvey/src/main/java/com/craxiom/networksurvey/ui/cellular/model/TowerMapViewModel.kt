@@ -70,8 +70,6 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
     private val _mapZoomLevel = MutableStateFlow(0.0)
     val mapZoomLevel = _mapZoomLevel.asStateFlow()
 
-    private val _currentLocation = MutableStateFlow<Location?>(null)
-
     fun setPaddingInsets(paddingValues: PaddingValues) {
         _paddingInsets.value = paddingValues
     }
@@ -100,7 +98,10 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
         _mapZoomLevel.value = zoomLevel
     }
 
-    fun updateLocation(location: Location?): Boolean {
+    /**
+     * Sets the center of the map to the provided location.
+     */
+    fun setMapCenterLocation(location: Location?): Boolean {
         if (location != null && !hasMapLocationBeenSet) {
             if (location.latitude != 0.0 || location.longitude != 0.0) {
                 hasMapLocationBeenSet = true
@@ -108,7 +109,6 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
             }
         }
 
-        _currentLocation.value = location
         return hasMapLocationBeenSet
     }
 
@@ -123,7 +123,6 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
         val servingCellRecord =
             cellularBatchResults.firstOrNull {
                 it?.cellularRecord != null && CellularUtils.isServingCell(it.cellularRecord)
-
             }
 
         updateServingCellSignals(servingCellRecord, subscriptionId)

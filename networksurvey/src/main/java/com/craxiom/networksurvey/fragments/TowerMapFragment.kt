@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.dp
+import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -89,7 +90,7 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
         }
 
         checkAcceptedMapPrivacy()
-        checkLocationServicesEnabled()
+        checkLocationServicesEnabledAndPrompt()
 
         startAndBindToService()
     }
@@ -118,14 +119,14 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
             if (viewModel == null) {
                 removeListener = false
             } else {
-                removeListener = viewModel!!.updateLocation(it)
+                removeListener = viewModel!!.setMapCenterLocation(it)
             }
         }
 
         if (!removeListener) {
             locationListener = LocationListener { location ->
                 if (viewModel == null) return@LocationListener
-                removeListener = viewModel!!.updateLocation(location)
+                removeListener = viewModel!!.setMapCenterLocation(location)
                 if (removeListener) service.unregisterLocationListener(locationListener)
             }
             service.registerLocationListener(locationListener)
@@ -194,13 +195,10 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
      * Checks if the location services are enabled on the device. If they are not, then a dialog is shown to the user
      * explaining that they need to enable location services for a better experience.
      */
-    private fun checkLocationServicesEnabled() {
+    private fun checkLocationServicesEnabledAndPrompt() {
         val locationManager =
             requireContext().getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val isLocationEnabled =
-            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
-                LocationManager.NETWORK_PROVIDER
-            )
+        val isLocationEnabled = LocationManagerCompat.isLocationEnabled(locationManager)
 
         if (!isLocationEnabled) {
             AlertDialog.Builder(requireContext())
