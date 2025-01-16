@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.32](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.32) - 2025-01-16
+
+* Stale out old locations so they are not set on records and implement a location update rate ceiling - [#59](https://github.com/christianrowlands/android-network-survey/issues/59).
+* Adds a PLMN filter option for the Tower Map - [#56](https://github.com/christianrowlands/android-network-survey/issues/56).
+* Group the MCC and MNC together on the cellular UI - [#61](https://github.com/christianrowlands/android-network-survey/issues/61).
+* Fix a bug with displaying the Sector ID for the LTE Cellular Calculator.
+* Correctly display the Location Provider and log file type preferences in the settings when set via MDM.
+* Trim the locations in the CSV log file to 6 decimal places - [#67](https://github.com/christianrowlands/android-network-survey/issues/67).
+* Rounds the speed, altitude, and accuracy to 2 decimal places in the CSV log file for all survey types - [#68](https://github.com/christianrowlands/android-network-survey/issues/68).
+* Fix clicking on the Server Connection (gRPC) notification to open the connection UI.
+
 ## [1.31](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.31) - 2024-11-04
 
 * UI updates throughout the app.
