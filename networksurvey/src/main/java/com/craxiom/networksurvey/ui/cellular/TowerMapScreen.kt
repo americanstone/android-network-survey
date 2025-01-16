@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -27,6 +29,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -58,6 +62,7 @@ import com.craxiom.messaging.UmtsRecord
 import com.craxiom.networksurvey.BuildConfig
 import com.craxiom.networksurvey.R
 import com.craxiom.networksurvey.model.CellularProtocol
+import com.craxiom.networksurvey.model.Plmn
 import com.craxiom.networksurvey.ui.cellular.model.CustomLocationOverlay
 import com.craxiom.networksurvey.ui.cellular.model.FollowMyLocationChangeListener
 import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo
@@ -117,6 +122,7 @@ internal fun TowerMapScreen(
     val isLoadingInProgress by viewModel.isLoadingInProgress.collectAsStateWithLifecycle()
     val isZoomedOutTooFar by viewModel.isZoomedOutTooFar.collectAsStateWithLifecycle()
     val radio by viewModel.selectedRadioType.collectAsStateWithLifecycle()
+    val currentPlmnFilter by viewModel.plmnFilter.collectAsStateWithLifecycle()
     val noTowersFound by viewModel.noTowersFound.collectAsStateWithLifecycle()
 
     val missingApiKey = BuildConfig.NS_API_KEY.isEmpty()
@@ -135,6 +141,7 @@ internal fun TowerMapScreen(
     var expanded by remember { mutableStateOf(false) }
     var isFollowing by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showPlmnDialog by remember { mutableStateOf(false) }
 
     val statusBarHeight = paddingInsets.calculateTopPadding()
     Surface(
@@ -186,6 +193,16 @@ internal fun TowerMapScreen(
                     }
 
                     Spacer(modifier = Modifier.width(16.dp))
+
+                    Button(
+                        onClick = { showPlmnDialog = true },
+                    ) {
+                        val buttonText =
+                            if (currentPlmnFilter.isSet()) currentPlmnFilter.toString() else "PLMN Filter"
+                        Text(text = buttonText, color = MaterialTheme.colorScheme.onSurface)
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     Button(
                         onClick = { expanded = true },
@@ -302,6 +319,20 @@ internal fun TowerMapScreen(
 
         if (showInfoDialog) {
             TowerMapInfoDialog(onDismiss = { showInfoDialog = false })
+        }
+
+        if (showPlmnDialog) {
+            PlmnFilterDialog(
+                currentPlmn = currentPlmnFilter,
+                onSetPlmnFilter = { mcc, mnc ->
+                    viewModel.setPlmnFilter(Plmn(mcc, mnc))
+                    viewModel.towers.value.clear()
+                    viewModel.viewModelScope.launch {
+                        runTowerQuery(viewModel)
+                    }
+                },
+                onDismiss = { showPlmnDialog = false }
+            )
         }
     }
 
@@ -651,7 +682,19 @@ private suspend fun getTowersFromServer(
                     // Format the bounding box coordinates to the required "bbox" string format
                     val bbox =
                         "${bounds.latSouth},${bounds.lonWest},${bounds.latNorth},${bounds.lonEast}"
-                    val response = nsApi.getTowers(bbox, viewModel.selectedRadioType.value)
+
+                    val response: Response<TowerResponse>
+                    if (viewModel.plmnFilter.value.isSet()) {
+                        val plmn = viewModel.plmnFilter.value
+                        response = nsApi.getTowers(
+                            bbox,
+                            viewModel.selectedRadioType.value,
+                            plmn.mcc,
+                            plmn.mnc
+                        )
+                    } else {
+                        response = nsApi.getTowers(bbox, viewModel.selectedRadioType.value)
+                    }
 
                     // Process the response
                     if (response.code() == 204) {
@@ -794,6 +837,84 @@ fun TowerMapInfoDialog(onDismiss: () -> Unit) {
     )
 }
 
+@Composable
+fun PlmnFilterDialog(
+    currentPlmn: Plmn,
+    onSetPlmnFilter: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var mccInput by remember { mutableStateOf(currentPlmn.mcc.toString()) }
+    var mncInput by remember { mutableStateOf(currentPlmn.mnc.toString()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Set PLMN Filter")
+        },
+        text = {
+            Column {
+                Text(
+                    text = """
+                        A PLMN (Public Land Mobile Network) is a network uniquely identified by a Mobile Country Code (MCC) and a Mobile Network Code (MNC). In other words, a PLMN identifies a specific cellular provider. 
+                        
+                        This filter allows you to display towers for a specific cellular provider.
+                    """.trimIndent()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = if (mccInput == "0") "" else mccInput,
+                    onValueChange = { mccInput = it },
+                    label = { Text("MCC") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (mccInput.isNotEmpty() && mccInput != "0") {
+                            IconButton(onClick = { mccInput = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear MCC"
+                                )
+                            }
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = if (mncInput == "0") "" else mncInput,
+                    onValueChange = { mncInput = it },
+                    label = { Text("MNC") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (mncInput.isNotEmpty() && mncInput != "0") {
+                            IconButton(onClick = { mncInput = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear MNC"
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val mcc = mccInput.toIntOrNull() ?: 0
+                    val mnc = mncInput.toIntOrNull() ?: 0
+                    onSetPlmnFilter(mcc, mnc)
+                    onDismiss()
+                }
+            ) {
+                Text("Set Filter")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 
 // The API definition for the NS Tower Service
 interface Api {
@@ -801,6 +922,14 @@ interface Api {
     suspend fun getTowers(
         @Query("bbox") bbox: String,
         @Query("radio") radio: String
+    ): Response<TowerResponse>
+
+    @GET("cells/area")
+    suspend fun getTowers(
+        @Query("bbox") bbox: String,
+        @Query("radio") radio: String,
+        @Query("mcc") mcc: Int,
+        @Query("mnc") mnc: Int
     ): Response<TowerResponse>
 }
 

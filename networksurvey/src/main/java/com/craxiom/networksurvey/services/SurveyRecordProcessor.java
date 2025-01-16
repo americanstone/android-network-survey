@@ -1448,14 +1448,9 @@ public class SurveyRecordProcessor
         final int tac = cellIdentity.getTac();
         final long nci = cellIdentity.getNci();
         int[] bands = new int[0];
-        Timber.i("Getting the NR Bands"); // TODO Delete this logging
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)
         {
             bands = cellIdentity.getBands();
-        }
-        for (int band : bands)
-        {
-            Timber.i("NR Band: %d", band); // TODO Delete this logging
         }
 
         CharSequence provider = null;

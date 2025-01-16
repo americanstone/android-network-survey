@@ -213,8 +213,14 @@ class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
         composeView.setContent {
             viewModel = viewModel()
             viewModel!!.setPaddingInsets(paddingValues)
-            if (servingCell?.servingCell != null && servingCell.servingCell.cellularProtocol != CellularProtocol.NONE) {
-                viewModel!!.setSelectedRadioType(servingCell.servingCell.cellularProtocol.name)
+            if (servingCell?.servingCell != null) {
+                if (servingCell.servingCell.cellularProtocol != CellularProtocol.NONE) {
+                    viewModel!!.setSelectedRadioType(servingCell.servingCell.cellularProtocol.name)
+                }
+                val plmn = servingCell.servingCell.plmn
+                if (plmn != null) {
+                    viewModel!!.setPlmnFilter(plmn)
+                }
             }
 
             NsTheme {

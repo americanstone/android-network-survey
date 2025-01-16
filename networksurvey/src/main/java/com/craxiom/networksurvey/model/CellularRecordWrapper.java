@@ -1,5 +1,7 @@
 package com.craxiom.networksurvey.model;
 
+import com.craxiom.messaging.CdmaRecord;
+import com.craxiom.messaging.CdmaRecordData;
 import com.craxiom.messaging.GsmRecord;
 import com.craxiom.messaging.GsmRecordData;
 import com.craxiom.messaging.LteRecord;
@@ -49,6 +51,42 @@ public class CellularRecordWrapper
     public int hashCode()
     {
         return hash;
+    }
+
+    /**
+     * @return The PLMN associated with the cellular record.
+     */
+    public Plmn getPlmn()
+    {
+        return switch (cellularProtocol)
+        {
+            case GSM ->
+            {
+                GsmRecordData gsmData = ((GsmRecord) cellularRecord).getData();
+                yield new Plmn(gsmData.getMcc().getValue(), gsmData.getMnc().getValue());
+            }
+            case CDMA ->
+            {
+                CdmaRecordData cdmaData = ((CdmaRecord) cellularRecord).getData();
+                yield new Plmn(cdmaData.getSid().getValue(), cdmaData.getNid().getValue());
+            }
+            case UMTS ->
+            {
+                UmtsRecordData umtsData = ((UmtsRecord) cellularRecord).getData();
+                yield new Plmn(umtsData.getMcc().getValue(), umtsData.getMnc().getValue());
+            }
+            case LTE ->
+            {
+                LteRecordData lteData = ((LteRecord) cellularRecord).getData();
+                yield new Plmn(lteData.getMcc().getValue(), lteData.getMnc().getValue());
+            }
+            case NR ->
+            {
+                NrRecordData nrData = ((NrRecord) cellularRecord).getData();
+                yield new Plmn(nrData.getMcc().getValue(), nrData.getMnc().getValue());
+            }
+            default -> new Plmn(0, 0);
+        };
     }
 
     private static String getComparableString(CellularRecordWrapper wrapper)

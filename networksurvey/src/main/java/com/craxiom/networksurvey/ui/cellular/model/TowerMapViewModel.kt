@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
 import com.craxiom.networksurvey.model.CellularProtocol
 import com.craxiom.networksurvey.model.CellularRecordWrapper
+import com.craxiom.networksurvey.model.Plmn
 import com.craxiom.networksurvey.ui.ASignalChartViewModel
 import com.craxiom.networksurvey.util.CellularUtils
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +59,9 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
     private val _selectedRadioType = MutableStateFlow(CellularProtocol.LTE.name)
     val selectedRadioType = _selectedRadioType.asStateFlow()
 
+    private val _plmnFilter = MutableStateFlow(Plmn(0, 0))
+    val plmnFilter = _plmnFilter.asStateFlow()
+
     private val _isLoadingInProgress = MutableStateFlow(true)
     val isLoadingInProgress = _isLoadingInProgress.asStateFlow()
 
@@ -80,6 +84,10 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
 
     fun setSelectedRadioType(radioType: String) {
         _selectedRadioType.value = radioType
+    }
+
+    fun setPlmnFilter(plmn: Plmn) {
+        _plmnFilter.value = plmn
     }
 
     fun setIsLoadingInProgress(isLoading: Boolean) {
