@@ -2,8 +2,11 @@
 
 package com.craxiom.networksurvey.ui.cellular
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.unit.sp
 import com.craxiom.networksurvey.ui.theme.NsTheme
 
 fun setContent(composeView: ComposeView, viewModel: CellularChartViewModel) {
@@ -16,3 +19,7 @@ fun setContent(composeView: ComposeView, viewModel: CellularChartViewModel) {
         }
     }
 }
+
+val Int.nonScaledSp
+    @Composable
+    get() = (this / LocalDensity.current.fontScale).sp

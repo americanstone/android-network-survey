@@ -199,7 +199,12 @@ internal fun TowerMapScreen(
                     ) {
                         val buttonText =
                             if (currentPlmnFilter.isSet()) currentPlmnFilter.toString() else "PLMN Filter"
-                        Text(text = buttonText, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            text = buttonText,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.nonScaledSp,
+                            lineHeight = 14.nonScaledSp,
+                        )
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -207,7 +212,11 @@ internal fun TowerMapScreen(
                     Button(
                         onClick = { expanded = true },
                     ) {
-                        Text(text = radio, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            text = radio, color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.nonScaledSp,
+                            lineHeight = 14.nonScaledSp,
+                        )
                     }
                 }
 
@@ -490,36 +499,54 @@ fun ServingCellInfoDisplay(cellInfo: ServingCellInfo?, servingSignalInfo: Servin
             .padding(16.dp),
         horizontalAlignment = Alignment.Start
     ) {
+        val fontSize = 14.nonScaledSp
+        val lineHeight = 20.nonScaledSp
         Text(
             text = "Serving Cell Info",
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.surface
+            color = MaterialTheme.colorScheme.surface,
+            fontSize = fontSize,
+            lineHeight = lineHeight
         )
         Spacer(modifier = Modifier.height(8.dp))
 
         if (cellInfo != null) {
             val servingCell = cellInfo.servingCell ?: return Text(
                 "No serving cell found",
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
+                fontSize = fontSize,
+                lineHeight = lineHeight
             )
             val record = servingCell.cellularRecord
 
             // Display technology and signal strengths based on CellularRecord
             Text(
                 "Technology: ${servingCell.cellularProtocol}",
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
+                fontSize = fontSize,
+                lineHeight = lineHeight
             )
             if (servingSignalInfo != null) {
                 Text(
                     servingSignalInfo.toString(),
-                    color = MaterialTheme.colorScheme.surface
+                    color = MaterialTheme.colorScheme.surface,
+                    fontSize = fontSize,
+                    lineHeight = lineHeight
                 )
             }
 
             val servingCellDisplayString = getServingCellDisplayString(record)
-            Text(servingCellDisplayString, color = MaterialTheme.colorScheme.surface)
+            Text(
+                servingCellDisplayString, color = MaterialTheme.colorScheme.surface,
+                fontSize = fontSize,
+                lineHeight = lineHeight
+            )
         } else {
-            Text("No serving cell info available", color = MaterialTheme.colorScheme.surface)
+            Text(
+                "No serving cell info available", color = MaterialTheme.colorScheme.surface,
+                fontSize = fontSize,
+                lineHeight = lineHeight
+            )
         }
     }
 }
