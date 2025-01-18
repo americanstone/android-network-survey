@@ -220,24 +220,27 @@ internal fun TowerMapScreen(
                     }
                 }
 
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    options.forEach { label ->
-                        DropdownMenuItem(
-                            text = { Text(text = label) },
-                            onClick = {
-                                if (viewModel.selectedRadioType.value != label) {
-                                    Timber.i("The Selected radio type changed to $label")
-                                    viewModel.setSelectedRadioType(label)
-                                    viewModel.towers.value.clear()
-                                    viewModel.viewModelScope.launch {
-                                        runTowerQuery(viewModel)
+                Box(modifier = Modifier
+                    .align(Alignment.BottomEnd)) {
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        options.forEach { label ->
+                            DropdownMenuItem(
+                                text = { Text(text = label) },
+                                onClick = {
+                                    if (viewModel.selectedRadioType.value != label) {
+                                        Timber.i("The Selected radio type changed to $label")
+                                        viewModel.setSelectedRadioType(label)
+                                        viewModel.towers.value.clear()
+                                        viewModel.viewModelScope.launch {
+                                            runTowerQuery(viewModel)
+                                        }
                                     }
-                                }
-                                expanded = false
-                            })
+                                    expanded = false
+                                })
+                        }
                     }
                 }
             }
