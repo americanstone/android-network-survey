@@ -62,6 +62,9 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
     private val _plmnFilter = MutableStateFlow(Plmn(0, 0))
     val plmnFilter = _plmnFilter.asStateFlow()
 
+    private val _selectedSource = MutableStateFlow(TowerSource.OpenCelliD)
+    val selectedSource = _selectedSource.asStateFlow()
+
     private val _isLoadingInProgress = MutableStateFlow(true)
     val isLoadingInProgress = _isLoadingInProgress.asStateFlow()
 
@@ -88,6 +91,10 @@ internal class TowerMapViewModel : ASignalChartViewModel() {
 
     fun setPlmnFilter(plmn: Plmn) {
         _plmnFilter.value = plmn
+    }
+
+    fun setTowerSource(towerSource: TowerSource) {
+        _selectedSource.value = towerSource
     }
 
     fun setIsLoadingInProgress(isLoading: Boolean) {
