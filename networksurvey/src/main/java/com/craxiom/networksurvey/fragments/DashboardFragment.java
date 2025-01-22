@@ -84,6 +84,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         initializeLocationTextView();
         initializeUiListeners();
         initializeObservers();
+        initializeUploadEnabledState();
 
         return binding.getRoot();
     }
@@ -209,6 +210,8 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
      */
     private void initializeUiListeners()
     {
+        initializeLoggingSwitch(binding.uploadEnabledToggleSwitch, (newEnabledState, toggleSwitch) -> viewModel.setUploadEnabled(newEnabledState));
+
         initializeLoggingSwitch(binding.cellularLoggingToggleSwitch, (newEnabledState, toggleSwitch) -> {
             viewModel.setCellularLoggingEnabled(newEnabledState);
             toggleCellularLogging(newEnabledState);
@@ -500,6 +503,8 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         viewModel.getProviderEnabled().observe(viewLifecycleOwner, this::updateLocationProviderStatus);
         viewModel.getLocation().observe(viewLifecycleOwner, this::updateLocationTextView);
 
+        viewModel.getUploadEnabled().observe(viewLifecycleOwner, this::updateUploadUi);
+
         viewModel.getCellularLoggingEnabled().observe(viewLifecycleOwner, this::updateCellularLogging);
         viewModel.getWifiLoggingEnabled().observe(viewLifecycleOwner, this::updateWifiLogging);
         viewModel.getBluetoothLoggingEnabled().observe(viewLifecycleOwner, this::updateBluetoothLogging);
@@ -524,6 +529,8 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         viewModel.getProviderEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getLocation().removeObservers(viewLifecycleOwner);
 
+        viewModel.getUploadEnabled().removeObservers(viewLifecycleOwner);
+
         viewModel.getCellularLoggingEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getWifiLoggingEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getBluetoothLoggingEnabled().removeObservers(viewLifecycleOwner);
@@ -536,6 +543,16 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         viewModel.getBluetoothMqttStreamEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getGnssMqttStreamEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getDeviceStatusMqttStreamEnabled().removeObservers(viewLifecycleOwner);
+    }
+
+    private void initializeUploadEnabledState()
+    {
+        final Context context = getContext();
+        if (context == null) return;
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean enabled = sharedPreferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_ENABLED);
+        viewModel.setUploadEnabled(enabled);
     }
 
     private synchronized void updateLoggingState(NetworkSurveyService networkSurveyService)
@@ -687,7 +704,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
                     "maybe the dashboard fragment has been removed");
             return;
         }
-        final SharedPreferences preferences = android.preference.PreferenceManager.getDefaultSharedPreferences(context);
+        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
         boolean cellularStreamEnabled = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_MQTT_CELLULAR_STREAM_ENABLED, NetworkSurveyConstants.DEFAULT_MQTT_CELLULAR_STREAM_SETTING);
         viewModel.setCellularMqttStreamEnabled(cellularStreamEnabled);
@@ -931,6 +948,32 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
 
         locationTextView.setTextColor(getResources().getColor(R.color.connectionStatusConnecting, null));
         locationTextView.setText(enabled ? R.string.searching_for_location : R.string.turn_on_gps);
+    }
+
+    /**
+     * Update the upload card UI so that it reflects the new enabled state.
+     */
+    private void updateUploadUi(boolean enabled)
+    {
+        final Context context = getContext();
+        if (context == null) return;
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        final SharedPreferences.Editor edit = sharedPreferences.edit();
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_ENABLED, enabled);
+        edit.apply();
+
+        viewModel.setUploadEnabled(enabled);
+        binding.uploadEnabledToggleSwitch.setChecked(enabled);
+
+        if (enabled)
+        {
+            binding.uploadDescriptionGroup.setVisibility(View.GONE);
+            binding.uploadControlGroup.setVisibility(View.VISIBLE);
+        } else
+        {
+            binding.uploadDescriptionGroup.setVisibility(View.VISIBLE);
+            binding.uploadControlGroup.setVisibility(View.GONE);
+        }
     }
 
     /**

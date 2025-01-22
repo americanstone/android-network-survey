@@ -18,6 +18,8 @@ import java.util.Objects;
  */
 public class DashboardViewModel extends ViewModel
 {
+    private final MutableLiveData<Boolean> uploadEnabled = new MutableLiveData<>();
+
     private final MutableLiveData<Boolean> cellularLoggingEnabled = new MutableLiveData<>();
     private final MutableLiveData<Boolean> wifiLoggingEnabled = new MutableLiveData<>();
     private final MutableLiveData<Boolean> bluetoothLoggingEnabled = new MutableLiveData<>();
@@ -33,6 +35,19 @@ public class DashboardViewModel extends ViewModel
 
     private final MutableLiveData<Location> location = new MutableLiveData<>();
     private final MutableLiveData<Boolean> providerEnabled = new MutableLiveData<>(true);
+
+    public LiveData<Boolean> getUploadEnabled()
+    {
+        return uploadEnabled;
+    }
+
+    public void setUploadEnabled(boolean isEnabled)
+    {
+        if (!Objects.equals(uploadEnabled.getValue(), isEnabled))
+        {
+            uploadEnabled.postValue(isEnabled);
+        }
+    }
 
     public LiveData<Boolean> getCellularLoggingEnabled()
     {

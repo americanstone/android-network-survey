@@ -99,6 +99,8 @@ public class NetworkSurveyConstants
 
     public static final String DEFAULT_ROLLOVER_SIZE_MB = "5";
 
+    public static final boolean DEFAULT_UPLOAD_ENABLED = true;
+
     public static final int LOCATION_PROVIDER_FUSED = 0;
     public static final int LOCATION_PROVIDER_GNSS = 1;
     public static final int LOCATION_PROVIDER_NETWORK = 2;
@@ -131,6 +133,12 @@ public class NetworkSurveyConstants
 
     // The following key is used in the app_restrictions.xml file and in the app's shared preferences
     public static final String PROPERTY_MQTT_START_ON_BOOT = "mqtt_start_on_boot";
+
+    /**
+     * Key for the preference on if records should be saved so that they can be uploaded to the
+     * tower databases.
+     */
+    public static final String PROPERTY_UPLOAD_ENABLED = "upload_enabled";
 
     public static final String PROPERTY_MQTT_CELLULAR_STREAM_ENABLED = "cellular_stream_enabled";
     public static final String PROPERTY_MQTT_WIFI_STREAM_ENABLED = "wifi_stream_enabled";
