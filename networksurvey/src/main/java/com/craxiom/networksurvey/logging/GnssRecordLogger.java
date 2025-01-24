@@ -1,27 +1,12 @@
 package com.craxiom.networksurvey.logging;
 
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.AGC_DB;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.ALTITUDE_STD_DEV_M;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.CARRIER_FREQUENCY_HZ;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.CARRIER_TO_NOISE_DENSITY_DB_HZ;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.CONSTELLATION;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.DEVICE_MODEL_COLUMN;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.GNSS_RECORDS_TABLE_NAME;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.GROUP_NUMBER_COLUMN;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.LATITUDE_STD_DEV_M;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.LONGITUDE_STD_DEV_M;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.RECORD_NUMBER_COLUMN;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.SPACE_VEHICLE_ID;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.TIME_COLUMN;
-import static com.craxiom.networksurvey.constants.GnssMessageConstants.getConstellationString;
-import static com.craxiom.networksurvey.constants.MessageConstants.ACCURACY;
-
 import android.os.Looper;
 
 import com.craxiom.messaging.GnssRecord;
 import com.craxiom.messaging.GnssRecordData;
 import com.craxiom.messaging.gnss.Constellation;
 import com.craxiom.networksurvey.constants.GnssMessageConstants;
+import com.craxiom.networksurvey.constants.MessageConstants;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
 import com.craxiom.networksurvey.constants.csv.GnssCsvConstants;
 import com.craxiom.networksurvey.listeners.IGnssSurveyRecordListener;
@@ -80,19 +65,19 @@ public class GnssRecordLogger extends SurveyRecordLogger implements IGnssSurveyR
      */
     private void createGnssRecordTable(GeoPackage geoPackage, SpatialReferenceSystem srs) throws SQLException
     {
-        createTable(GNSS_RECORDS_TABLE_NAME, geoPackage, srs, false, (tableColumns, columnNumber) -> {
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GROUP_NUMBER_COLUMN, GeoPackageDataType.MEDIUMINT, true, -1));
+        createTable(GnssMessageConstants.GNSS_RECORDS_TABLE_NAME, geoPackage, srs, false, (tableColumns, columnNumber) -> {
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.GROUP_NUMBER_COLUMN, GeoPackageDataType.MEDIUMINT, true, -1));
 
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, CONSTELLATION, GeoPackageDataType.TEXT, false, null));
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, SPACE_VEHICLE_ID, GeoPackageDataType.MEDIUMINT, false, null));
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, CARRIER_FREQUENCY_HZ, GeoPackageDataType.INT, false, null));
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, LATITUDE_STD_DEV_M, GeoPackageDataType.FLOAT, false, null));
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, LONGITUDE_STD_DEV_M, GeoPackageDataType.FLOAT, false, null));
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, ALTITUDE_STD_DEV_M, GeoPackageDataType.FLOAT, false, null));
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, AGC_DB, GeoPackageDataType.FLOAT, false, null));
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, CARRIER_TO_NOISE_DENSITY_DB_HZ, GeoPackageDataType.FLOAT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.CONSTELLATION, GeoPackageDataType.TEXT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.SPACE_VEHICLE_ID, GeoPackageDataType.MEDIUMINT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.CARRIER_FREQUENCY_HZ, GeoPackageDataType.INT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.LATITUDE_STD_DEV_M, GeoPackageDataType.FLOAT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.LONGITUDE_STD_DEV_M, GeoPackageDataType.FLOAT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.ALTITUDE_STD_DEV_M, GeoPackageDataType.FLOAT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.AGC_DB, GeoPackageDataType.FLOAT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.CARRIER_TO_NOISE_DENSITY_DB_HZ, GeoPackageDataType.FLOAT, false, null));
             //noinspection UnusedAssignment
-            tableColumns.add(FeatureColumn.createColumn(columnNumber++, DEVICE_MODEL_COLUMN, GeoPackageDataType.TEXT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, GnssMessageConstants.DEVICE_MODEL_COLUMN, GeoPackageDataType.TEXT, false, null));
         });
     }
 
@@ -113,7 +98,7 @@ public class GnssRecordLogger extends SurveyRecordLogger implements IGnssSurveyR
                     if (geoPackage != null)
                     {
                         final GnssRecordData data = gnssRecord.getData();
-                        FeatureDao featureDao = geoPackage.getFeatureDao(GNSS_RECORDS_TABLE_NAME);
+                        FeatureDao featureDao = geoPackage.getFeatureDao(GnssMessageConstants.GNSS_RECORDS_TABLE_NAME);
                         FeatureRow row = featureDao.newRow();
 
                         Point fix = new Point(data.getLongitude(), data.getLatitude(), (double) data.getAltitude());
@@ -124,50 +109,53 @@ public class GnssRecordLogger extends SurveyRecordLogger implements IGnssSurveyR
                         row.setGeometry(geomData);
 
                         row.setValue(GnssCsvConstants.DEVICE_SERIAL_NUMBER, data.getDeviceSerialNumber());
-                        row.setValue(TIME_COLUMN, NsUtils.getEpochFromRfc3339(data.getDeviceTime()));
+                        row.setValue(GnssMessageConstants.TIME_COLUMN, NsUtils.getEpochFromRfc3339(data.getDeviceTime()));
                         row.setValue(GnssMessageConstants.MISSION_ID_COLUMN, data.getMissionId());
-                        row.setValue(RECORD_NUMBER_COLUMN, data.getRecordNumber());
-                        row.setValue(GROUP_NUMBER_COLUMN, data.getGroupNumber());
-                        row.setValue(DEVICE_MODEL_COLUMN, data.getDeviceModel());
+                        row.setValue(GnssMessageConstants.RECORD_NUMBER_COLUMN, data.getRecordNumber());
+                        row.setValue(GnssMessageConstants.GROUP_NUMBER_COLUMN, data.getGroupNumber());
+                        row.setValue(GnssMessageConstants.DEVICE_MODEL_COLUMN, data.getDeviceModel());
                         row.setValue(GnssCsvConstants.SPEED, data.getSpeed());
-                        row.setValue(ACCURACY, MathUtils.roundAccuracy(data.getAccuracy()));
+                        row.setValue(MessageConstants.ACCURACY, MathUtils.roundAccuracy(data.getAccuracy()));
 
                         final Constellation constellation = data.getConstellation();
                         if (constellation != Constellation.UNKNOWN)
                         {
-                            row.setValue(CONSTELLATION, getConstellationString(constellation));
+                            row.setValue(GnssMessageConstants.CONSTELLATION, GnssMessageConstants.getConstellationString(constellation));
                         }
 
                         if (data.hasSpaceVehicleId())
                         {
-                            row.setValue(SPACE_VEHICLE_ID, data.getSpaceVehicleId().getValue());
+                            row.setValue(GnssMessageConstants.SPACE_VEHICLE_ID, data.getSpaceVehicleId().getValue());
                         }
 
                         if (data.hasCarrierFreqHz())
                         {
-                            row.setValue(CARRIER_FREQUENCY_HZ, data.getCarrierFreqHz().getValue());
+                            row.setValue(GnssMessageConstants.CARRIER_FREQUENCY_HZ, data.getCarrierFreqHz().getValue());
                         }
 
                         if (data.hasLatitudeStdDevM())
                         {
-                            row.setValue(LATITUDE_STD_DEV_M, data.getLatitudeStdDevM().getValue());
+                            row.setValue(GnssMessageConstants.LATITUDE_STD_DEV_M, data.getLatitudeStdDevM().getValue());
                         }
 
                         if (data.hasLongitudeStdDevM())
                         {
-                            row.setValue(LONGITUDE_STD_DEV_M, data.getLongitudeStdDevM().getValue());
+                            row.setValue(GnssMessageConstants.LONGITUDE_STD_DEV_M, data.getLongitudeStdDevM().getValue());
                         }
 
                         if (data.hasAltitudeStdDevM())
                         {
-                            row.setValue(ALTITUDE_STD_DEV_M, data.getAltitudeStdDevM().getValue());
+                            row.setValue(GnssMessageConstants.ALTITUDE_STD_DEV_M, data.getAltitudeStdDevM().getValue());
                         }
 
-                        if (data.hasAgcDb()) row.setValue(AGC_DB, data.getAgcDb().getValue());
+                        if (data.hasAgcDb())
+                        {
+                            row.setValue(GnssMessageConstants.AGC_DB, data.getAgcDb().getValue());
+                        }
 
                         if (data.hasCn0DbHz())
                         {
-                            row.setValue(CARRIER_TO_NOISE_DENSITY_DB_HZ, data.getCn0DbHz().getValue());
+                            row.setValue(GnssMessageConstants.CARRIER_TO_NOISE_DENSITY_DB_HZ, data.getCn0DbHz().getValue());
                         }
 
                         featureDao.insert(row);

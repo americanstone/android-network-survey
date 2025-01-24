@@ -91,6 +91,7 @@ import com.craxiom.networksurvey.listeners.ICellularSurveyRecordListener;
 import com.craxiom.networksurvey.listeners.IDeviceStatusListener;
 import com.craxiom.networksurvey.listeners.IGnssSurveyRecordListener;
 import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener;
+import com.craxiom.networksurvey.logging.db.DbUploadStore;
 import com.craxiom.networksurvey.model.CdrEvent;
 import com.craxiom.networksurvey.model.CdrEventType;
 import com.craxiom.networksurvey.model.CellularProtocol;
@@ -163,6 +164,8 @@ public class SurveyRecordProcessor
     private final Set<ICdrEventListener> cdrListeners = new CopyOnWriteArraySet<>();
     private final Set<IDeviceStatusListener> deviceStatusListeners = new CopyOnWriteArraySet<>();
     private volatile NetworkSurveyActivity networkSurveyActivity;
+
+    private ICellularSurveyRecordListener cellularDbSink;
 
     private final ExecutorService executorService;
     private final String deviceId;
@@ -301,6 +304,17 @@ public class SurveyRecordProcessor
     void unregisterDeviceStatusListener(IDeviceStatusListener deviceStatusListener)
     {
         deviceStatusListeners.remove(deviceStatusListener);
+    }
+
+    /**
+     * Adds a sink for the local database that does not follow the typical listener lifecycle.
+     * More specifically, when the last regular listener is removed then the survey service will
+     * be shutdown, but this DB sink will always want to consume records if they are being created
+     * and will not prevent the survey service from being shutdown.
+     */
+    public synchronized void addDbSink(DbUploadStore dbSink)
+    {
+        cellularDbSink = dbSink;
     }
 
     /**
@@ -2382,6 +2396,15 @@ public class SurveyRecordProcessor
                 Timber.e(t, "Unable to notify a Cellular Survey Record Listener because of an exception");
             }
         });
+
+        // Synchronized because the user can turn off the DB sink via the UI, which would set it to null
+        synchronized (this)
+        {
+            if (cellularDbSink != null)
+            {
+                cellularDbSink.onCellularBatch(cellularRecords, subscriptionId);
+            }
+        }
     }
 
     /**

@@ -62,6 +62,7 @@ import com.craxiom.networksurvey.listeners.IGnssSurveyRecordListener;
 import com.craxiom.networksurvey.listeners.ILoggingChangeListener;
 import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener;
 import com.craxiom.networksurvey.logging.DeviceStatusCsvLogger;
+import com.craxiom.networksurvey.logging.db.DbUploadStore;
 import com.craxiom.networksurvey.model.LogTypeState;
 import com.craxiom.networksurvey.mqtt.MqttConnection;
 import com.craxiom.networksurvey.mqtt.MqttConnectionInfo;
@@ -124,6 +125,7 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
     private GpsListener primaryLocationListener;
     private ExtraLocationListener gnssLocationListener;
     private ExtraLocationListener networkLocationListener;
+    private DbUploadStore cellularDbUploadStore;
 
     private DeviceStatusCsvLogger deviceStatusCsvLogger;
     private Looper serviceLooper;
@@ -165,6 +167,12 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
         networkLocationListener = new ExtraLocationListener(LocationManager.NETWORK_PROVIDER);
 
         surveyRecordProcessor = new SurveyRecordProcessor(primaryLocationListener, deviceId, context, executorService);
+
+        cellularDbUploadStore = new DbUploadStore(context);
+        if (PreferenceUtils.isUploadEnabled(context))
+        {
+            surveyRecordProcessor.addDbSink(cellularDbUploadStore);
+        }
 
         cellularController = new CellularController(this, executorService, serviceLooper, serviceHandler, surveyRecordProcessor);
         wifiController = new WifiController(this, executorService, serviceLooper, serviceHandler, surveyRecordProcessor, uiThreadHandler);
@@ -390,6 +398,9 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
                 updateLocationListener();
                 break;
 
+            case NetworkSurveyConstants.PROPERTY_UPLOAD_ENABLED:
+                updateUploadEnabled();
+                break;
             default:
                 break;
         }
@@ -1304,6 +1315,22 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
         if (networkLocationListener != null)
         {
             if (locationManager != null) locationManager.removeUpdates(networkLocationListener);
+        }
+    }
+
+    /**
+     * Adds or removes the Database Sink from the survey record processor depending on the user
+     * preference.
+     */
+    public void updateUploadEnabled()
+    {
+        final boolean uploadEnabled = PreferenceUtils.isUploadEnabled(this);
+        if (uploadEnabled)
+        {
+            surveyRecordProcessor.addDbSink(cellularDbUploadStore);
+        } else
+        {
+            surveyRecordProcessor.addDbSink(null);
         }
     }
 

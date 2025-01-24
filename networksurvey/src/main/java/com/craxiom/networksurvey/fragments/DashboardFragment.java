@@ -48,6 +48,7 @@ import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.MathUtils;
 import com.craxiom.networksurvey.util.MdmUtils;
+import com.craxiom.networksurvey.util.PreferenceUtils;
 import com.craxiom.networksurvey.util.ToggleLoggingTask;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -191,6 +192,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
     {
+        if (key == null) return;
         switch (key)
         {
             case NetworkSurveyConstants.PROPERTY_MQTT_CELLULAR_STREAM_ENABLED:
@@ -550,9 +552,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         final Context context = getContext();
         if (context == null) return;
 
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean enabled = sharedPreferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_ENABLED);
-        viewModel.setUploadEnabled(enabled);
+        viewModel.setUploadEnabled(PreferenceUtils.isUploadEnabled(context));
     }
 
     private synchronized void updateLoggingState(NetworkSurveyService networkSurveyService)

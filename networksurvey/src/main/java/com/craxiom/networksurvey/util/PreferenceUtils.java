@@ -818,4 +818,10 @@ public class PreferenceUtils
     {
         PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean(NetworkSurveyConstants.PROPERTY_KEY_DENIED_BACKGROUND_LOCATION_PERMISSION, true).apply();
     }
+
+    public static boolean isUploadEnabled(Context context)
+    {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return sharedPreferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_ENABLED);
+    }
 }

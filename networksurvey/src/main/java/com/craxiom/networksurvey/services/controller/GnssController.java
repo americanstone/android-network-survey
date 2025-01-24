@@ -1,7 +1,5 @@
 package com.craxiom.networksurvey.services.controller;
 
-import static com.craxiom.networksurvey.util.GpsTestUtil.getGnssTimeoutIntervalMs;
-
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.location.GnssMeasurementsEvent;
@@ -22,6 +20,7 @@ import com.craxiom.networksurvey.logging.GnssRecordLogger;
 import com.craxiom.networksurvey.model.LogTypeState;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.services.SurveyRecordProcessor;
+import com.craxiom.networksurvey.util.GpsTestUtil;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 
 import java.util.concurrent.ExecutorService;
@@ -319,13 +318,13 @@ public class GnssController extends AController
 
                             surveyRecordProcessor.checkForMissedGnssMeasurement();
 
-                            serviceHandler.postDelayed(this, getGnssTimeoutIntervalMs(gnssScanRateMs));
+                            serviceHandler.postDelayed(this, GpsTestUtil.getGnssTimeoutIntervalMs(gnssScanRateMs));
                         } catch (SecurityException e)
                         {
                             Timber.e(e, "Could not get the required permissions to check for missed GNSS measurement");
                         }
                     }
-                }, getGnssTimeoutIntervalMs(gnssScanRateMs));
+                }, GpsTestUtil.getGnssTimeoutIntervalMs(gnssScanRateMs));
 
                 success = true;
             }
