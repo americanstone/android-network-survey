@@ -11,13 +11,16 @@ import com.craxiom.networksurvey.logging.db.dao.GsmRecordDao;
 import com.craxiom.networksurvey.logging.db.dao.LteRecordDao;
 import com.craxiom.networksurvey.logging.db.dao.NrRecordDao;
 import com.craxiom.networksurvey.logging.db.dao.UmtsRecordDao;
+import com.craxiom.networksurvey.logging.db.dao.WifiRecordDao;
 import com.craxiom.networksurvey.logging.db.model.CdmaRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.GsmRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.LteRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.NrRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.UmtsRecordEntity;
+import com.craxiom.networksurvey.logging.db.model.WifiBeaconRecordEntity;
 
-@Database(entities = {GsmRecordEntity.class, CdmaRecordEntity.class, UmtsRecordEntity.class, LteRecordEntity.class, NrRecordEntity.class}, version = 3)
+@Database(entities = {GsmRecordEntity.class, CdmaRecordEntity.class, UmtsRecordEntity.class,
+        LteRecordEntity.class, NrRecordEntity.class, WifiBeaconRecordEntity.class}, version = 4)
 public abstract class SurveyDatabase extends RoomDatabase
 {
 
@@ -30,6 +33,8 @@ public abstract class SurveyDatabase extends RoomDatabase
     public abstract LteRecordDao lteRecordDao();
 
     public abstract NrRecordDao nrRecordDao();
+
+    public abstract WifiRecordDao wifiRecordDao();
 
     private static volatile SurveyDatabase INSTANCE;
 

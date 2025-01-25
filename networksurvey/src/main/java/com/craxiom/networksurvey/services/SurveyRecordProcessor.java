@@ -165,7 +165,7 @@ public class SurveyRecordProcessor
     private final Set<IDeviceStatusListener> deviceStatusListeners = new CopyOnWriteArraySet<>();
     private volatile NetworkSurveyActivity networkSurveyActivity;
 
-    private ICellularSurveyRecordListener cellularDbSink;
+    private DbUploadStore cellularDbSink;
 
     private final ExecutorService executorService;
     private final String deviceId;
@@ -2447,6 +2447,15 @@ public class SurveyRecordProcessor
             } catch (Exception e)
             {
                 Timber.e(e, "Unable to notify a Wi-Fi Survey Record Listener because of an exception");
+            }
+        }
+
+        // Synchronized because the user can turn off the DB sink via the UI, which would set it to null
+        synchronized (this)
+        {
+            if (cellularDbSink != null)
+            {
+                cellularDbSink.onWifiBeaconSurveyRecords(wifiBeaconRecords);
             }
         }
     }

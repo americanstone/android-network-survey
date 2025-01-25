@@ -12,20 +12,24 @@ import com.craxiom.messaging.NrRecord;
 import com.craxiom.messaging.NrRecordData;
 import com.craxiom.messaging.UmtsRecord;
 import com.craxiom.messaging.UmtsRecordData;
+import com.craxiom.messaging.WifiBeaconRecordData;
 import com.craxiom.networksurvey.listeners.ICellularSurveyRecordListener;
+import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener;
 import com.craxiom.networksurvey.logging.db.model.CdmaRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.GsmRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.LteRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.NrRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.UmtsRecordEntity;
+import com.craxiom.networksurvey.logging.db.model.WifiBeaconRecordEntity;
 import com.craxiom.networksurvey.model.CellularRecordWrapper;
+import com.craxiom.networksurvey.model.WifiRecordWrapper;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class DbUploadStore implements ICellularSurveyRecordListener
+public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurveyRecordListener
 {
     private final SurveyDatabase database;
     private final ExecutorService executorService;
@@ -99,6 +103,26 @@ public class DbUploadStore implements ICellularSurveyRecordListener
             if (!nrRecords.isEmpty())
             {
                 database.nrRecordDao().insertRecords(nrRecords);
+            }
+        });
+    }
+
+    @Override
+    public void onWifiBeaconSurveyRecords(List<WifiRecordWrapper> wifiBeaconRecords)
+    {
+        executorService.execute(() -> {
+            final List<WifiBeaconRecordEntity> wifiRecords = new ArrayList<>();
+
+            for (WifiRecordWrapper wifiRecordWrapper : wifiBeaconRecords)
+            {
+                WifiBeaconRecordData wifiRecord = wifiRecordWrapper.getWifiBeaconRecord().getData();
+                WifiBeaconRecordEntity wifiEntity = mapWifiRecordToEntity(wifiRecord);
+                wifiRecords.add(wifiEntity);
+            }
+
+            if (!wifiRecords.isEmpty())
+            {
+                database.wifiRecordDao().insertRecords(wifiRecords);
             }
         });
     }
@@ -260,6 +284,46 @@ public class DbUploadStore implements ICellularSurveyRecordListener
         entity.servingCell = record.hasServingCell() ? record.getServingCell().getValue() : null;
         entity.provider = record.getProvider();
         entity.slot = record.hasSlot() ? record.getSlot().getValue() : null;
+
+        return entity;
+    }
+
+    private WifiBeaconRecordEntity mapWifiRecordToEntity(WifiBeaconRecordData record)
+    {
+        WifiBeaconRecordEntity entity = new WifiBeaconRecordEntity();
+        entity.deviceSerialNumber = record.getDeviceSerialNumber();
+        entity.deviceName = record.getDeviceName();
+        entity.deviceTime = record.getDeviceTime();
+        entity.latitude = record.getLatitude();
+        entity.longitude = record.getLongitude();
+        entity.altitude = record.getAltitude();
+        entity.missionId = record.getMissionId();
+        entity.recordNumber = record.getRecordNumber();
+        entity.accuracy = record.getAccuracy();
+        entity.speed = record.getSpeed();
+
+        entity.sourceAddress = record.getSourceAddress();
+        entity.destinationAddress = record.getDestinationAddress();
+        entity.bssid = record.getBssid();
+
+        entity.beaconInterval = record.hasBeaconInterval() ? record.getBeaconInterval().getValue() : null;
+        entity.serviceSetType = record.getServiceSetType().name();
+        entity.ssid = record.getSsid();
+        entity.supportedRates = record.getSupportedRates();
+        entity.extendedSupportedRates = record.getExtendedSupportedRates();
+        entity.cipherSuites = record.getCipherSuitesList().toString();
+        entity.akmSuites = record.getAkmSuitesList().toString();
+        entity.encryptionType = record.getEncryptionType().name();
+        entity.wps = record.hasWps() ? record.getWps().getValue() : null;
+        entity.passpoint = record.hasPasspoint() ? record.getPasspoint().getValue() : null;
+        entity.bandwidth = record.getBandwidth().name();
+
+        entity.channel = record.hasChannel() ? record.getChannel().getValue() : null;
+        entity.frequencyMhz = record.hasFrequencyMhz() ? record.getFrequencyMhz().getValue() : null;
+        entity.signalStrength = record.hasSignalStrength() ? record.getSignalStrength().getValue() : null;
+        entity.snr = record.hasSnr() ? record.getSnr().getValue() : null;
+        entity.nodeType = record.getNodeType().name();
+        entity.standard = record.getStandard().name();
 
         return entity;
     }
