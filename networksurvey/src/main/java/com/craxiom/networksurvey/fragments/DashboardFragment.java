@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -214,6 +215,8 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     {
         initializeLoggingSwitch(binding.uploadEnabledToggleSwitch, (newEnabledState, toggleSwitch) -> viewModel.setUploadEnabled(newEnabledState));
 
+        binding.uploadButton.setOnClickListener(v -> showUploadDialog());
+
         initializeLoggingSwitch(binding.cellularLoggingToggleSwitch, (newEnabledState, toggleSwitch) -> {
             viewModel.setCellularLoggingEnabled(newEnabledState);
             toggleCellularLogging(newEnabledState);
@@ -296,6 +299,34 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         binding.cdrHelpIcon.setOnClickListener(c -> showCdrHelpDialog());
         binding.fileHelpIcon.setOnClickListener(c -> showFileMqttHelpDialog());
         binding.mqttHelpIcon.setOnClickListener(c -> showFileMqttHelpDialog());
+    }
+
+    /**
+     * Display the upload dialog to the user, and then handle the upload based on the user's choices.
+     */
+    private void showUploadDialog()
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_upload, null);
+        builder.setView(dialogView);
+
+        CheckBox checkOpenCellId = dialogView.findViewById(R.id.checkOpenCellId);
+        CheckBox checkBeaconDB = dialogView.findViewById(R.id.checkBeaconDB);
+        CheckBox checkRetry = dialogView.findViewById(R.id.checkRetry);
+
+        builder.setTitle("Upload Options")
+                .setPositiveButton("Upload", (dialog, which) -> {
+                    boolean uploadToOpenCellId = checkOpenCellId.isChecked();
+                    boolean uploadToBeaconDB = checkBeaconDB.isChecked();
+                    boolean enableRetry = checkRetry.isChecked();
+
+                    handleUpload(uploadToOpenCellId, uploadToBeaconDB, enableRetry);
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
     }
 
     private void navigateToMqttFragment()
@@ -973,6 +1004,23 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         {
             binding.uploadDescriptionGroup.setVisibility(View.VISIBLE);
             binding.uploadControlGroup.setVisibility(View.GONE);
+        }
+    }
+
+    private void handleUpload(boolean openCellId, boolean beaconDB, boolean retry)
+    {
+        // TODO Finish me
+        if (openCellId)
+        {
+            // Upload to OpenCelliD
+        }
+        if (beaconDB)
+        {
+            // Upload to BeaconDB
+        }
+        if (retry)
+        {
+            // Enable retry logic
         }
     }
 
