@@ -160,6 +160,8 @@ dependencies {
     implementation 'com.squareup.retrofit2:retrofit:2.11.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.11.0'
 
+    implementation "androidx.work:work-runtime:2.10.0"
+
     // Compose
     def composeBom = platform('androidx.compose:compose-bom:2024.10.01')
     implementation(composeBom)
