@@ -101,6 +101,10 @@ public class NetworkSurveyConstants
 
     public static final boolean DEFAULT_UPLOAD_ENABLED = true;
 
+    public static final boolean DEFAULT_UPLOAD_TO_OPENCELLID = false;
+    public static final boolean DEFAULT_UPLOAD_TO_BEACONDB = false;
+    public static final boolean DEFAULT_UPLOAD_RETRY_ENABLED = true;
+
     public static final int LOCATION_PROVIDER_FUSED = 0;
     public static final int LOCATION_PROVIDER_GNSS = 1;
     public static final int LOCATION_PROVIDER_NETWORK = 2;
@@ -152,6 +156,10 @@ public class NetworkSurveyConstants
     public static final String PROPERTY_GRPC_BLUETOOTH_STREAM_ENABLED = "grpc_bluetooth_stream_enabled";
     public static final String PROPERTY_GRPC_GNSS_STREAM_ENABLED = "grpc_gnss_stream_enabled";
     public static final String PROPERTY_GRPC_DEVICE_STATUS_STREAM_ENABLED = "grpc_device_status_stream_enabled";
+
+    public static final String PROPERTY_UPLOAD_TO_OPENCELLID = "upload_to_opencellid";
+    public static final String PROPERTY_UPLOAD_TO_BEACONDB = "upload_to_beacondb";
+    public static final String PROPERTY_UPLOAD_RETRY_ENABLED = "upload_retry_enabled";
 
     // Stored Preferences not exposed via the Settings UI
     public static final String PROPERTY_NETWORK_SURVEY_CONNECTION_HOST = "connection_host";

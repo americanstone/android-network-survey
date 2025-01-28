@@ -34,6 +34,9 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import com.craxiom.mqttlibrary.IConnectionStateListener;
 import com.craxiom.mqttlibrary.MqttConstants;
@@ -45,6 +48,7 @@ import com.craxiom.networksurvey.databinding.FragmentDashboardBinding;
 import com.craxiom.networksurvey.databinding.MqttStreamItemBinding;
 import com.craxiom.networksurvey.fragments.model.DashboardViewModel;
 import com.craxiom.networksurvey.listeners.ILoggingChangeListener;
+import com.craxiom.networksurvey.logging.db.uploader.NsUploaderWorker;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.MathUtils;
@@ -306,6 +310,14 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
      */
     private void showUploadDialog()
     {
+        final Context context = getContext();
+        if (context == null) return;
+
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean prefUploadToOpenCellId = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
+        boolean prefUploadToBeaconDb = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_BEACONDB);
+        boolean prefRetryUpload = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_RETRY_ENABLED);
+
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         LayoutInflater inflater = requireActivity().getLayoutInflater();
         View dialogView = inflater.inflate(R.layout.dialog_upload, null);
@@ -315,13 +327,17 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         CheckBox checkBeaconDB = dialogView.findViewById(R.id.checkBeaconDB);
         CheckBox checkRetry = dialogView.findViewById(R.id.checkRetry);
 
+        checkOpenCellId.setChecked(prefUploadToOpenCellId);
+        checkBeaconDB.setChecked(prefUploadToBeaconDb);
+        checkRetry.setChecked(prefRetryUpload);
+
         builder.setTitle("Upload Options")
                 .setPositiveButton("Upload", (dialog, which) -> {
                     boolean uploadToOpenCellId = checkOpenCellId.isChecked();
                     boolean uploadToBeaconDB = checkBeaconDB.isChecked();
                     boolean enableRetry = checkRetry.isChecked();
 
-                    handleUpload(uploadToOpenCellId, uploadToBeaconDB, enableRetry);
+                    startUploadWorker(uploadToOpenCellId, uploadToBeaconDB, enableRetry);
                 })
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
@@ -1007,21 +1023,34 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         }
     }
 
-    private void handleUpload(boolean openCellId, boolean beaconDB, boolean retry)
+    /**
+     * Trigger the upload worker to upload the data to the specified services.
+     */
+    private void startUploadWorker(boolean uploadToOpenCellId, boolean uploadToBeaconDB, boolean retry)
     {
-        // TODO Finish me
-        if (openCellId)
-        {
-            // Upload to OpenCelliD
-        }
-        if (beaconDB)
-        {
-            // Upload to BeaconDB
-        }
-        if (retry)
-        {
-            // Enable retry logic
-        }
+        final Context context = getContext();
+        if (context == null) return;
+
+        // TODO Also add the preferences to the settings UI
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        final SharedPreferences.Editor edit = sharedPreferences.edit();
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, uploadToOpenCellId);
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, uploadToBeaconDB);
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, retry);
+        edit.apply();
+
+        Data inputData = new Data.Builder()
+                .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, uploadToOpenCellId)
+                .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, uploadToBeaconDB)
+                .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, retry)
+                .build();
+
+        OneTimeWorkRequest uploadRequest = new OneTimeWorkRequest.Builder(NsUploaderWorker.class)
+                .addTag(NsUploaderWorker.WORKER_TAG)
+                .setInputData(inputData)
+                .build();
+
+        WorkManager.getInstance(context).enqueue(uploadRequest);
     }
 
     /**

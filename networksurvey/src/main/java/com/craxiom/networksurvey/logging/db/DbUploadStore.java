@@ -58,28 +58,43 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
                 {
                     case GSM:
                         GsmRecordData gsmRecordData = ((GsmRecord) cellularRecordWrapper.cellularRecord).getData();
-                        GsmRecordEntity gsmEntity = mapGsmRecordToEntity(gsmRecordData);
-                        gsmRecords.add(gsmEntity);
+                        if (isCompleteGsmRecord(gsmRecordData))
+                        {
+                            GsmRecordEntity gsmEntity = mapGsmRecordToEntity(gsmRecordData);
+                            gsmRecords.add(gsmEntity);
+                        }
                         break;
                     case CDMA:
                         CdmaRecordData cdmaRecordData = ((CdmaRecord) cellularRecordWrapper.cellularRecord).getData();
-                        CdmaRecordEntity cdmaEntity = mapCdmaRecordToEntity(cdmaRecordData);
-                        cdmaRecords.add(cdmaEntity);
+                        if (isCompleteCdmaRecord(cdmaRecordData))
+                        {
+                            CdmaRecordEntity cdmaEntity = mapCdmaRecordToEntity(cdmaRecordData);
+                            cdmaRecords.add(cdmaEntity);
+                        }
                         break;
                     case UMTS:
                         UmtsRecordData umtsRecordData = ((UmtsRecord) cellularRecordWrapper.cellularRecord).getData();
-                        UmtsRecordEntity umtsEntity = mapUmtsRecordToEntity(umtsRecordData);
-                        umtsRecords.add(umtsEntity);
+                        if (isCompleteUmtsRecord(umtsRecordData))
+                        {
+                            UmtsRecordEntity umtsEntity = mapUmtsRecordToEntity(umtsRecordData);
+                            umtsRecords.add(umtsEntity);
+                        }
                         break;
                     case LTE:
                         LteRecordData lteRecordData = ((LteRecord) cellularRecordWrapper.cellularRecord).getData();
-                        LteRecordEntity lteEntity = mapLteRecordToEntity(lteRecordData);
-                        lteRecords.add(lteEntity);
+                        if (isCompleteLteRecord(lteRecordData))
+                        {
+                            LteRecordEntity lteEntity = mapLteRecordToEntity(lteRecordData);
+                            lteRecords.add(lteEntity);
+                        }
                         break;
                     case NR:
-                        NrRecordData nrRecord = ((NrRecord) cellularRecordWrapper.cellularRecord).getData();
-                        NrRecordEntity nrEntity = mapNrRecordToEntity(nrRecord);
-                        nrRecords.add(nrEntity);
+                        NrRecordData nrRecordData = ((NrRecord) cellularRecordWrapper.cellularRecord).getData();
+                        if (isCompleteNrRecord(nrRecordData))
+                        {
+                            NrRecordEntity nrEntity = mapNrRecordToEntity(nrRecordData);
+                            nrRecords.add(nrEntity);
+                        }
                         break;
                 }
             }
@@ -125,6 +140,81 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
                 database.wifiRecordDao().insertRecords(wifiRecords);
             }
         });
+    }
+
+    private boolean isCompleteGsmRecord(GsmRecordData data)
+    {
+        // Yes, I know that 0.0 is a valid location, but I am filtering on 0.0 anyway
+        double latitude = data.getLatitude();
+        double longitude = data.getLongitude();
+        boolean hasLocation = latitude != 0d && longitude != 0d;
+
+        return data.hasMcc() &&
+                data.hasMnc() &&
+                data.hasLac() &&
+                data.hasCi() &&
+                hasLocation &&
+                data.hasSignalStrength();
+    }
+
+    private boolean isCompleteCdmaRecord(CdmaRecordData data)
+    {
+        return false; // Ignore CDMA for now
+        /*double latitude = data.getLatitude();
+        double longitude = data.getLongitude();
+        boolean hasLocation = latitude != 0d && longitude != 0d;
+
+        return data.hasSid() &&
+                data.hasNid() &&
+                data.hasZone() &&
+                data.hasBsid() &&
+                hasLocation &&
+                data.hasSignalStrength();*/
+    }
+
+    private boolean isCompleteUmtsRecord(UmtsRecordData data)
+    {
+        // Yes, I know that 0.0 is a valid location, but I am filtering on 0.0 anyway
+        double latitude = data.getLatitude();
+        double longitude = data.getLongitude();
+        boolean hasLocation = latitude != 0d && longitude != 0d;
+
+        return data.hasMcc() &&
+                data.hasMnc() &&
+                data.hasLac() &&
+                data.hasCid() &&
+                hasLocation &&
+                data.hasRscp();
+    }
+
+    private boolean isCompleteLteRecord(LteRecordData data)
+    {
+        // Yes, I know that 0.0 is a valid location, but I am filtering on 0.0 anyway
+        double latitude = data.getLatitude();
+        double longitude = data.getLongitude();
+        boolean hasLocation = latitude != 0d && longitude != 0d;
+
+        return data.hasMcc() &&
+                data.hasMnc() &&
+                data.hasTac() &&
+                data.hasEci() &&
+                hasLocation &&
+                data.hasRsrp();
+    }
+
+    private boolean isCompleteNrRecord(NrRecordData data)
+    {
+        // Yes, I know that 0.0 is a valid location, but I am filtering on 0.0 anyway
+        double latitude = data.getLatitude();
+        double longitude = data.getLongitude();
+        boolean hasLocation = latitude != 0d && longitude != 0d;
+
+        return data.hasMcc() &&
+                data.hasMnc() &&
+                data.hasTac() &&
+                data.hasNci() &&
+                hasLocation &&
+                data.hasSsRsrp();
     }
 
     private GsmRecordEntity mapGsmRecordToEntity(GsmRecordData record)

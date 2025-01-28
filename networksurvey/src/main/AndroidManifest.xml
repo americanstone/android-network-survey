@@ -132,6 +132,15 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".logging.db.uploader.UploadStopReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.craxiom.networksurvey.UPLOADER_STOP" />
+            </intent-filter>
+        </receiver>
+
+
     </application>
 
 </manifest>
