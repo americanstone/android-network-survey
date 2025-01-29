@@ -14,11 +14,14 @@ import androidx.work.WorkerParameters;
 
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
 import com.craxiom.networksurvey.logging.db.SurveyDatabase;
+import com.craxiom.networksurvey.logging.db.dao.SurveyRecordDao;
+import com.craxiom.networksurvey.logging.db.model.CdmaRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.CellularRecordsWrapper;
+import com.craxiom.networksurvey.logging.db.model.GsmRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.LteRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.NrRecordEntity;
+import com.craxiom.networksurvey.logging.db.model.UmtsRecordEntity;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -67,14 +70,15 @@ public class NsUploaderWorker extends Worker
             setForegroundAsync(foregroundInfo);
 
             Timber.d("UploaderWorker: Starting upload process...");
+            // TODO Prevent a second trigger of this doWork somehow (Tower Collector uses an application static variable)
 
             // Read work input parameters
             isOpenCellIdUploadEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, false);
             isBeaconDBUploadEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, false);
             isRetryEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, false);
+            // TODO Get the OpenCelliD API key from the input data, or a shared key from the app
 
-            // Fetch records from DB in batches
-            int totalRecords = database.surveyRecordDao().getNrRecordCountForUpload();
+            int totalRecords = getTotalRecordsForUpload(database.surveyRecordDao());
             if (totalRecords == 0)
             {
                 Timber.d("UploaderWorker: No records to upload.");
@@ -84,26 +88,18 @@ public class NsUploaderWorker extends Worker
             int partsCount = (int) Math.ceil((double) totalRecords / LOCATIONS_PER_PART);
             for (int i = 0; i < partsCount; i++)
             {
-                List<NrRecordEntity> records = database.surveyRecordDao().getNrRecordsForUpload(LOCATIONS_PER_PART);
-
-                if (records.isEmpty())
+                boolean success = processUploadBatch(LOCATIONS_PER_PART);
+                if (!success)
                 {
-                    break;
-                }
-
-                UploadResult result = uploadRecords(records);
-                if (result == UploadResult.Success)
-                {
-                    // TODO Mark records as uploaded
-                    //markRecordsAsUploaded(records);
-                } else if (isRetryEnabled)
-                {
-                    Timber.d("UploaderWorker: Upload failed, retry enabled.");
-                    return Result.retry();
-                } else
-                {
-                    Timber.e("UploaderWorker: Upload failed with no retry.");
-                    return Result.failure();
+                    if (isRetryEnabled)
+                    {
+                        Timber.d("UploaderWorker: Upload failed, retry enabled.");
+                        return Result.retry();
+                    } else
+                    {
+                        Timber.e("UploaderWorker: Upload failed with no retry.");
+                        return Result.failure();
+                    }
                 }
 
                 // Progress update
@@ -121,14 +117,60 @@ public class NsUploaderWorker extends Worker
         }
     }
 
-    private UploadResult uploadRecords(List<NrRecordEntity> nrRecords)
+    private boolean processUploadBatch(int batchSize)
+    {
+        List<NrRecordEntity> nrRecords = database.surveyRecordDao().getNrRecordsForUpload(batchSize);
+        List<LteRecordEntity> lteRecords = database.surveyRecordDao().getLteRecordsForUpload(batchSize);
+        List<UmtsRecordEntity> umtsRecords = database.surveyRecordDao().getUmtsRecordsForUpload(batchSize);
+        List<GsmRecordEntity> gsmRecords = database.surveyRecordDao().getGsmRecordsForUpload(batchSize);
+        List<CdmaRecordEntity> cdmaRecords = database.surveyRecordDao().getCdmaRecordsForUpload(batchSize);
+
+        boolean success = true;
+
+        if (!nrRecords.isEmpty())
+        {
+            success &= processUpload(nrRecords);
+        }
+        if (!lteRecords.isEmpty())
+        {
+            success &= processUpload(lteRecords);
+        }
+        if (!umtsRecords.isEmpty())
+        {
+            success &= processUpload(umtsRecords);
+        }
+        if (!gsmRecords.isEmpty())
+        {
+            success &= processUpload(gsmRecords);
+        }
+        if (!cdmaRecords.isEmpty())
+        {
+            success &= processUpload(cdmaRecords);
+        }
+
+        return success;
+    }
+
+    private <T> boolean processUpload(List<T> records)
+    {
+        UploadResult result = uploadRecords(records);
+        if (result == UploadResult.Success)
+        {
+            markRecordsAsUploaded(records);
+            return true;
+        }
+        return false;
+    }
+
+    private <T> UploadResult uploadRecords(List<T> records)
     {
         try
         {
             UploadService uploadService = UploadService.getInstance();
 
-            CellularRecordsWrapper recordsWrapper = new CellularRecordsWrapper(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), nrRecords);
-            if (false)// TODO if (isOpenCellIdUploadEnabled)
+            final CellularRecordsWrapper recordsWrapper = CellularRecordsWrapper.createCellularRecordsWrapper(records);
+
+            if (isOpenCellIdUploadEnabled)
             {
                 final UploadResult[] result = {UploadResult.NotStarted};
                 uploadService.uploadToOpenCellID(UploadConstants.OPENCELLID_URL, recordsWrapper)
@@ -136,7 +178,7 @@ public class NsUploaderWorker extends Worker
                 // FIXME Return the result
             }
 
-            if (false)// TODO if (isBeaconDBUploadEnabled)
+            if (isBeaconDBUploadEnabled)
             {
                 // TODO Update this call to be like the other one
                 Response<ResponseBody> response = uploadService.uploadToBeaconDB(UploadConstants.BEACONDB_URL, recordsWrapper).execute();
@@ -147,7 +189,7 @@ public class NsUploaderWorker extends Worker
                 }
             }
 
-            uploadService.uploadToOpenCellID("http://172.22.50.192:8080/v2/geosubmit", recordsWrapper)
+            uploadService.uploadToOpenCellID("http://172.22.51.71:8080/v2/geosubmit", recordsWrapper)
                     .enqueue(new retrofit2.Callback<>()
                     {
                         @Override
@@ -177,11 +219,35 @@ public class NsUploaderWorker extends Worker
         }
     }
 
-    private void markRecordsAsUploaded(List<LteRecordEntity> records)
+    private <T> void markRecordsAsUploaded(List<T> records)
     {
-        List<Long> recordIds = records.stream().map(record -> record.id).collect(Collectors.toList());
-        database.surveyRecordDao().markLteRecordsAsUploaded(recordIds);
-        Timber.d("UploaderWorker: %d records marked as uploaded.", recordIds.size());
+        if (records == null || records.isEmpty()) return;
+
+        database.runInTransaction(() -> {
+            if (records.get(0) instanceof NrRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((NrRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markNrRecordsAsUploaded(recordIds);
+            } else if (records.get(0) instanceof LteRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((LteRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markLteRecordsAsUploaded(recordIds);
+            } else if (records.get(0) instanceof UmtsRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((UmtsRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markUmtsRecordsAsUploaded(recordIds);
+            } else if (records.get(0) instanceof GsmRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((GsmRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markGsmRecordsAsUploaded(recordIds);
+            } else if (records.get(0) instanceof CdmaRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((CdmaRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markCdmaRecordsAsUploaded(recordIds);
+            }
+
+            Timber.d("UploaderWorker: %d records marked as uploaded.", records.size());
+        });
     }
 
     @Override
@@ -201,6 +267,18 @@ public class NsUploaderWorker extends Worker
         {
             return new ForegroundInfo(NOTIFICATION_ID, notification);
         }
+    }
+
+    /**
+     * Sums up the total number of records to be uploaded for all cellular protocols.
+     */
+    public int getTotalRecordsForUpload(SurveyRecordDao surveyRecordDao)
+    {
+        return surveyRecordDao.getNrRecordCountForUpload()
+                + surveyRecordDao.getLteRecordCountForUpload()
+                + surveyRecordDao.getUmtsRecordCountForUpload()
+                + surveyRecordDao.getGsmRecordCountForUpload()
+                + surveyRecordDao.getCdmaRecordCountForUpload();
     }
 
     private static class UploadRecordsCallback implements retrofit2.Callback<ResponseBody>

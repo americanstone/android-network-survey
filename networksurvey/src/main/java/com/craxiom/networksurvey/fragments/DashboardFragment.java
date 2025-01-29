@@ -53,6 +53,7 @@ import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.MathUtils;
 import com.craxiom.networksurvey.util.MdmUtils;
+import com.craxiom.networksurvey.util.NsUtils;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 import com.craxiom.networksurvey.util.ToggleLoggingTask;
 import com.google.android.material.snackbar.Snackbar;
@@ -1030,6 +1031,17 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     {
         final Context context = getContext();
         if (context == null) return;
+
+        if (!NsUtils.isNetworkAvailable(context))
+        {
+            new android.app.AlertDialog.Builder(context)
+                    .setTitle(R.string.uploader_no_internet_title)
+                    .setMessage(R.string.uploader_no_internet_message)
+                    .setCancelable(true)
+                    .setPositiveButton(R.string.ok, null)
+                    .show();
+            return;
+        }
 
         // TODO Also add the preferences to the settings UI
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);

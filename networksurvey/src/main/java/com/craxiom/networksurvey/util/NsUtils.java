@@ -7,10 +7,14 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.craxiom.networksurvey.Application;
 import com.craxiom.networksurvey.R;
@@ -198,5 +202,36 @@ public class NsUtils
         {
             return "";
         }
+    }
+
+    /**
+     * @return True if there is a network connection available, false if it is not reachable.
+     */
+    public static boolean isNetworkAvailable(Context context)
+    {
+        if (hasPermission(context, Manifest.permission.ACCESS_NETWORK_STATE))
+        {
+            ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            Network activeNetwork = connectivityManager.getActiveNetwork();
+            NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(activeNetwork);
+            if (capabilities != null)
+            {
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+                {
+                    return true;
+                }
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))
+                {
+                    return true;
+                }
+                return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET);
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasPermission(Context context, String permission)
+    {
+        return (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED);
     }
 }
