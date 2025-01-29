@@ -10,7 +10,8 @@ public class NrRecordEntity
     @PrimaryKey(autoGenerate = true)
     public long id;
 
-    public boolean uploaded = false;
+    public boolean ocidUploaded = false;
+    public boolean beaconDbUploaded = false;
 
     @NonNull
     public String deviceSerialNumber;

@@ -21,7 +21,7 @@ import com.craxiom.networksurvey.logging.db.model.UmtsRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.WifiBeaconRecordEntity;
 
 @Database(entities = {GsmRecordEntity.class, CdmaRecordEntity.class, UmtsRecordEntity.class,
-        LteRecordEntity.class, NrRecordEntity.class, WifiBeaconRecordEntity.class}, version = 4)
+        LteRecordEntity.class, NrRecordEntity.class, WifiBeaconRecordEntity.class}, version = 5)
 public abstract class SurveyDatabase extends RoomDatabase
 {
     public abstract GsmRecordDao gsmRecordDao();
@@ -49,7 +49,7 @@ public abstract class SurveyDatabase extends RoomDatabase
                 if (INSTANCE == null)
                 {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
-                                    SurveyDatabase.class, "cellular_survey_db")
+                                    SurveyDatabase.class, "survey_db")
                             .fallbackToDestructiveMigration()
                             .build();
                 }

@@ -10,6 +10,8 @@ public class WifiBeaconRecordEntity
     @PrimaryKey(autoGenerate = true)
     public long id;
 
+    public boolean beaconDbUploaded = false;
+
     @NonNull
     public String deviceSerialNumber;
     @NonNull

@@ -129,7 +129,7 @@ public class NsUploaderWorker extends Worker
 
         if (!nrRecords.isEmpty())
         {
-            success &= processUpload(nrRecords);
+            success &= processUpload(nrRecords); // TODO Is this &= success what we want?
         }
         if (!lteRecords.isEmpty())
         {
@@ -153,43 +153,82 @@ public class NsUploaderWorker extends Worker
 
     private <T> boolean processUpload(List<T> records)
     {
-        UploadResult result = uploadRecords(records);
-        if (result == UploadResult.Success)
+        boolean success = true;
+        UploadResultBundle result = uploadRecords(records);
+        if (result.getResult(UploadTarget.OpenCelliD) == UploadResult.Success)
         {
-            markRecordsAsUploaded(records);
-            return true;
+            markRecordsAsUploadedToOcid(records);
+        } else
+        {
+            success = false;
         }
-        return false;
+
+        if (result.getResult(UploadTarget.BeaconDB) == UploadResult.Success)
+        {
+            markRecordsAsUploadedToBeaconDb(records);
+        } else
+        {
+            success = false;
+        }
+
+        return success;
     }
 
-    private <T> UploadResult uploadRecords(List<T> records)
+    private <T> UploadResultBundle uploadRecords(List<T> records)
     {
+        final UploadResultBundle uploadResultBundle = new UploadResultBundle();
         try
         {
-            UploadService uploadService = UploadService.getInstance();
-
             final CellularRecordsWrapper recordsWrapper = CellularRecordsWrapper.createCellularRecordsWrapper(records);
 
             if (isOpenCellIdUploadEnabled)
             {
-                final UploadResult[] result = {UploadResult.NotStarted};
-                uploadService.uploadToOpenCellID(UploadConstants.OPENCELLID_URL, recordsWrapper)
-                        .enqueue(new UploadRecordsCallback(result));
-                // FIXME Return the result
+                OpenCelliDUploadClient ocidClient = OpenCelliDUploadClient.getInstance();
+                Response<ResponseBody> response = ocidClient.uploadToOcid(recordsWrapper).execute();
+                try (ResponseBody body = response.body())
+                {
+                    assert body != null;
+                    RequestResult requestResult = OpenCelliDUploadClient.handleOcidResponse(response.code(), body);
+                    Timber.d("Upload to BeaconDB: Server response: %s", requestResult);
+                    UploadResult uploadResult = OpenCelliDUploadClient.mapRequestResultToUploadResult(requestResult);
+                    uploadResultBundle.setResult(UploadTarget.BeaconDB, uploadResult);
+                } catch (Exception e)
+                {
+                    Timber.e(e, "UploaderWorker: BeaconDB upload failed due to exception.");
+                    uploadResultBundle.setResult(UploadTarget.BeaconDB, UploadResult.Failure);
+                }
+            } else
+            {
+                Timber.d("UploaderWorker: OpenCelliD upload not enabled.");
+                // When the user does not enable a target, we still need to mark the records as uploaded so they can be deleted
+                uploadResultBundle.markSuccessful(UploadTarget.OpenCelliD);
             }
 
             if (isBeaconDBUploadEnabled)
             {
-                // TODO Update this call to be like the other one
-                Response<ResponseBody> response = uploadService.uploadToBeaconDB(UploadConstants.BEACONDB_URL, recordsWrapper).execute();
-                if (!response.isSuccessful())
+                BeaconDbUploadClient beaconDbClient = BeaconDbUploadClient.getInstance();
+                Response<ResponseBody> response = beaconDbClient.uploadToBeaconDB(recordsWrapper).execute();
+                try (ResponseBody body = response.body())
                 {
-                    Timber.e("UploaderWorker: BeaconDB upload failed with response: %s", response.message());
-                    return UploadResult.Failure;
+                    assert body != null;
+                    RequestResult requestResult = BeaconDbUploadClient.handleBeaconDbResponse(response.code(), body);
+                    Timber.d("Upload to BeaconDB: Server response: %s", requestResult);
+                    UploadResult uploadResult = BeaconDbUploadClient.mapRequestResultToUploadResult(requestResult);
+                    uploadResultBundle.setResult(UploadTarget.BeaconDB, uploadResult);
+                } catch (Exception e)
+                {
+                    Timber.e(e, "UploaderWorker: BeaconDB upload failed due to exception.");
+                    uploadResultBundle.setResult(UploadTarget.BeaconDB, UploadResult.Failure);
                 }
+            } else
+            {
+                Timber.d("UploaderWorker: BeaconDB upload not enabled.");
+                // When the user does not enable a target, we still need to mark the records as uploaded so they can be deleted
+                uploadResultBundle.markSuccessful(UploadTarget.BeaconDB);
             }
 
-            uploadService.uploadToOpenCellID("http://172.22.51.71:8080/v2/geosubmit", recordsWrapper)
+            BeaconDbUploadClient beaconDbClient = BeaconDbUploadClient.getInstance();
+            beaconDbClient.uploadToCustomEndpoint("http://172.22.51.71:8080/v2/geosubmit", recordsWrapper)
                     .enqueue(new retrofit2.Callback<>()
                     {
                         @Override
@@ -211,15 +250,16 @@ public class NsUploaderWorker extends Worker
                         }
                     });
 
-            return UploadResult.Success;
+            return uploadResultBundle;
         } catch (Exception e)
         {
             Timber.e(e, "UploaderWorker: Upload failed due to exception.");
-            return UploadResult.Failure;
+            uploadResultBundle.markAllFailure();
+            return uploadResultBundle;
         }
     }
 
-    private <T> void markRecordsAsUploaded(List<T> records)
+    private <T> void markRecordsAsUploadedToOcid(List<T> records)
     {
         if (records == null || records.isEmpty()) return;
 
@@ -227,23 +267,54 @@ public class NsUploaderWorker extends Worker
             if (records.get(0) instanceof NrRecordEntity)
             {
                 List<Long> recordIds = records.stream().map(record -> ((NrRecordEntity) record).id).collect(Collectors.toList());
-                database.surveyRecordDao().markNrRecordsAsUploaded(recordIds);
+                database.surveyRecordDao().markNrRecordsAsUploadedToOcid(recordIds);
             } else if (records.get(0) instanceof LteRecordEntity)
             {
                 List<Long> recordIds = records.stream().map(record -> ((LteRecordEntity) record).id).collect(Collectors.toList());
-                database.surveyRecordDao().markLteRecordsAsUploaded(recordIds);
+                database.surveyRecordDao().markLteRecordsAsUploadedToOcid(recordIds);
             } else if (records.get(0) instanceof UmtsRecordEntity)
             {
                 List<Long> recordIds = records.stream().map(record -> ((UmtsRecordEntity) record).id).collect(Collectors.toList());
-                database.surveyRecordDao().markUmtsRecordsAsUploaded(recordIds);
+                database.surveyRecordDao().markUmtsRecordsAsUploadedToOcid(recordIds);
             } else if (records.get(0) instanceof GsmRecordEntity)
             {
                 List<Long> recordIds = records.stream().map(record -> ((GsmRecordEntity) record).id).collect(Collectors.toList());
-                database.surveyRecordDao().markGsmRecordsAsUploaded(recordIds);
+                database.surveyRecordDao().markGsmRecordsAsUploadedToOcid(recordIds);
             } else if (records.get(0) instanceof CdmaRecordEntity)
             {
                 List<Long> recordIds = records.stream().map(record -> ((CdmaRecordEntity) record).id).collect(Collectors.toList());
-                database.surveyRecordDao().markCdmaRecordsAsUploaded(recordIds);
+                database.surveyRecordDao().markCdmaRecordsAsUploadedToOcid(recordIds);
+            }
+
+            Timber.d("UploaderWorker: %d records marked as uploaded.", records.size());
+        });
+    }
+
+    private <T> void markRecordsAsUploadedToBeaconDb(List<T> records)
+    {
+        if (records == null || records.isEmpty()) return;
+
+        database.runInTransaction(() -> {
+            if (records.get(0) instanceof NrRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((NrRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markNrRecordsAsUploadedToBeaconDb(recordIds);
+            } else if (records.get(0) instanceof LteRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((LteRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markLteRecordsAsUploadedToBeaconDb(recordIds);
+            } else if (records.get(0) instanceof UmtsRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((UmtsRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markUmtsRecordsAsUploadedToBeaconDb(recordIds);
+            } else if (records.get(0) instanceof GsmRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((GsmRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markGsmRecordsAsUploadedToBeaconDb(recordIds);
+            } else if (records.get(0) instanceof CdmaRecordEntity)
+            {
+                List<Long> recordIds = records.stream().map(record -> ((CdmaRecordEntity) record).id).collect(Collectors.toList());
+                database.surveyRecordDao().markCdmaRecordsAsUploadedToBeaconDb(recordIds);
             }
 
             Timber.d("UploaderWorker: %d records marked as uploaded.", records.size());
@@ -279,37 +350,6 @@ public class NsUploaderWorker extends Worker
                 + surveyRecordDao.getUmtsRecordCountForUpload()
                 + surveyRecordDao.getGsmRecordCountForUpload()
                 + surveyRecordDao.getCdmaRecordCountForUpload();
-    }
-
-    private static class UploadRecordsCallback implements retrofit2.Callback<ResponseBody>
-    {
-        private final UploadResult[] result;
-
-        public UploadRecordsCallback(UploadResult[] result)
-        {
-            this.result = result;
-        }
-
-        @Override
-        public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response)
-        {
-            if (response.isSuccessful())
-            {
-                Timber.i("Upload successful!");
-                result[0] = UploadResult.Success;
-            } else
-            {
-                Timber.w("Upload failed: %s", response.errorBody());
-                result[0] = UploadResult.Failure;
-            }
-        }
-
-        @Override
-        public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t)
-        {
-            Timber.e(t, "UploaderWorker: OpenCellID upload failed due to exception.");
-            result[0] = UploadResult.ServerError;
-        }
     }
 }
 

@@ -10,6 +10,7 @@ import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.os.Build;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
@@ -202,6 +203,11 @@ public class NsUtils
         {
             return "";
         }
+    }
+
+    public static String getDeviceModel()
+    {
+        return Build.MANUFACTURER + " " + Build.MODEL;
     }
 
     /**

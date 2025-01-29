@@ -14,48 +14,68 @@ import java.util.List;
 @Dao
 public interface SurveyRecordDao
 {
-    @Query("SELECT COUNT(*) FROM gsm_survey_records WHERE uploaded = 0")
+    // GSM
+    @Query("SELECT COUNT(*) FROM gsm_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0")
     int getGsmRecordCountForUpload();
 
-    @Query("SELECT * FROM gsm_survey_records WHERE uploaded = 0 LIMIT :limit")
+    @Query("SELECT * FROM gsm_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0 LIMIT :limit")
     List<GsmRecordEntity> getGsmRecordsForUpload(int limit);
 
-    @Query("UPDATE gsm_survey_records SET uploaded = 1 WHERE id IN (:recordIds)")
-    void markGsmRecordsAsUploaded(List<Long> recordIds);
+    @Query("UPDATE gsm_survey_records SET ocidUploaded = 1 WHERE id IN (:recordIds)")
+    void markGsmRecordsAsUploadedToOcid(List<Long> recordIds);
 
-    @Query("SELECT COUNT(*) FROM cdma_survey_records WHERE uploaded = 0")
+    @Query("UPDATE gsm_survey_records SET beaconDbUploaded = 1 WHERE id IN (:recordIds)")
+    void markGsmRecordsAsUploadedToBeaconDb(List<Long> recordIds);
+
+    // CDMA
+    @Query("SELECT COUNT(*) FROM cdma_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0")
     int getCdmaRecordCountForUpload();
 
-    @Query("SELECT * FROM cdma_survey_records WHERE uploaded = 0 LIMIT :limit")
+    @Query("SELECT * FROM cdma_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0 LIMIT :limit")
     List<CdmaRecordEntity> getCdmaRecordsForUpload(int limit);
 
-    @Query("UPDATE cdma_survey_records SET uploaded = 1 WHERE id IN (:recordIds)")
-    void markCdmaRecordsAsUploaded(List<Long> recordIds);
+    @Query("UPDATE cdma_survey_records SET ocidUploaded = 1 WHERE id IN (:recordIds)")
+    void markCdmaRecordsAsUploadedToOcid(List<Long> recordIds);
 
-    @Query("SELECT COUNT(*) FROM umts_survey_records WHERE uploaded = 0")
+    @Query("UPDATE cdma_survey_records SET beaconDbUploaded = 1 WHERE id IN (:recordIds)")
+    void markCdmaRecordsAsUploadedToBeaconDb(List<Long> recordIds);
+
+    // UMTS
+    @Query("SELECT COUNT(*) FROM umts_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0")
     int getUmtsRecordCountForUpload();
 
-    @Query("SELECT * FROM umts_survey_records WHERE uploaded = 0 LIMIT :limit")
+    @Query("SELECT * FROM umts_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0 LIMIT :limit")
     List<UmtsRecordEntity> getUmtsRecordsForUpload(int limit);
 
-    @Query("UPDATE umts_survey_records SET uploaded = 1 WHERE id IN (:recordIds)")
-    void markUmtsRecordsAsUploaded(List<Long> recordIds);
+    @Query("UPDATE umts_survey_records SET ocidUploaded = 1 WHERE id IN (:recordIds)")
+    void markUmtsRecordsAsUploadedToOcid(List<Long> recordIds);
 
-    @Query("SELECT COUNT(*) FROM lte_survey_records WHERE uploaded = 0")
+    @Query("UPDATE umts_survey_records SET beaconDbUploaded = 1 WHERE id IN (:recordIds)")
+    void markUmtsRecordsAsUploadedToBeaconDb(List<Long> recordIds);
+
+    // LTE
+    @Query("SELECT COUNT(*) FROM lte_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0")
     int getLteRecordCountForUpload();
 
-    @Query("SELECT * FROM lte_survey_records WHERE uploaded = 0 LIMIT :limit")
+    @Query("SELECT * FROM lte_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0 LIMIT :limit")
     List<LteRecordEntity> getLteRecordsForUpload(int limit);
 
-    @Query("UPDATE lte_survey_records SET uploaded = 1 WHERE id IN (:recordIds)")
-    void markLteRecordsAsUploaded(List<Long> recordIds);
+    @Query("UPDATE lte_survey_records SET ocidUploaded = 1 WHERE id IN (:recordIds)")
+    void markLteRecordsAsUploadedToOcid(List<Long> recordIds);
 
-    @Query("SELECT COUNT(*) FROM nr_survey_records WHERE uploaded = 0")
+    @Query("UPDATE lte_survey_records SET beaconDbUploaded = 1 WHERE id IN (:recordIds)")
+    void markLteRecordsAsUploadedToBeaconDb(List<Long> recordIds);
+
+    // NR (5G)
+    @Query("SELECT COUNT(*) FROM nr_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0")
     int getNrRecordCountForUpload();
 
-    @Query("SELECT * FROM nr_survey_records WHERE uploaded = 0 LIMIT :limit")
+    @Query("SELECT * FROM nr_survey_records WHERE ocidUploaded = 0 OR beaconDbUploaded = 0 LIMIT :limit")
     List<NrRecordEntity> getNrRecordsForUpload(int limit);
 
-    @Query("UPDATE nr_survey_records SET uploaded = 1 WHERE id IN (:recordIds)")
-    void markNrRecordsAsUploaded(List<Long> recordIds);
+    @Query("UPDATE nr_survey_records SET ocidUploaded = 1 WHERE id IN (:recordIds)")
+    void markNrRecordsAsUploadedToOcid(List<Long> recordIds);
+
+    @Query("UPDATE nr_survey_records SET beaconDbUploaded = 1 WHERE id IN (:recordIds)")
+    void markNrRecordsAsUploadedToBeaconDb(List<Long> recordIds);
 }
