@@ -137,8 +137,10 @@ but work independently, so you have full control over how you handle your data.<
     <string name="enabled_title">Enabled</string>
     <string name="upload_disabled_description_text">Upload to Database is disabled. You won\'t be able to upload survey data records to 3rd party databases such as OpenCelliD and BeaconDB.</string>
     <string name="upload_queue_title">Records Ready for Upload</string>
-    <string name="cellular_upload_queue_count">Cellular: %1$s </string>
-    <string name="wifi_upload_queue_count">Wi-Fi: %1$s </string>
+    <string name="cellular_upload_queue_count_initial">Cellular:</string>
+    <string name="cellular_upload_queue_count">Cellular:  %1$d</string>
+    <string name="wifi_upload_queue_count_initial">Wi-Fi:</string>
+    <string name="wifi_upload_queue_count">Wi-Fi:  %1$d</string>
     <string name="upload_button_text">Upload\nRecords</string>
     <string name="upload_survey_records">Upload Survey Records</string>
     <string name="upload_to_opencellid">Upload to OpenCelliD</string>

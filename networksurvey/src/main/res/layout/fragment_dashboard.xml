@@ -166,7 +166,7 @@
                                             style="@style/SmallStatusText"
                                             android:layout_width="wrap_content"
                                             android:layout_height="wrap_content"
-                                            android:text="@string/cellular_upload_queue_count" />
+                                            android:text="@string/cellular_upload_queue_count_initial" />
 
                                     </LinearLayout>
 
@@ -190,7 +190,7 @@
                                             style="@style/SmallStatusText"
                                             android:layout_width="wrap_content"
                                             android:layout_height="wrap_content"
-                                            android:text="@string/wifi_upload_queue_count" />
+                                            android:text="@string/wifi_upload_queue_count_initial" />
 
                                     </LinearLayout>
 

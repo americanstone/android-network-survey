@@ -48,6 +48,8 @@ import com.craxiom.networksurvey.databinding.FragmentDashboardBinding;
 import com.craxiom.networksurvey.databinding.MqttStreamItemBinding;
 import com.craxiom.networksurvey.fragments.model.DashboardViewModel;
 import com.craxiom.networksurvey.listeners.ILoggingChangeListener;
+import com.craxiom.networksurvey.logging.db.SurveyDatabase;
+import com.craxiom.networksurvey.logging.db.dao.SurveyRecordDao;
 import com.craxiom.networksurvey.logging.db.uploader.NsUploaderWorker;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.ui.main.SharedViewModel;
@@ -59,6 +61,8 @@ import com.craxiom.networksurvey.util.ToggleLoggingTask;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.text.DecimalFormat;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 
 import timber.log.Timber;
@@ -76,6 +80,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     private static final int ACCESS_BLUETOOTH_PERMISSION_REQUEST_ID = 22;
 
     private final DecimalFormat locationFormat = new DecimalFormat("###.#####");
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     private FragmentDashboardBinding binding;
     private DashboardViewModel viewModel;
@@ -92,6 +97,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         initializeUiListeners();
         initializeObservers();
         initializeUploadEnabledState();
+        updateUploadQueueCount();
 
         return binding.getRoot();
     }
@@ -1022,6 +1028,18 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
             binding.uploadDescriptionGroup.setVisibility(View.VISIBLE);
             binding.uploadControlGroup.setVisibility(View.GONE);
         }
+    }
+
+    private void updateUploadQueueCount()
+    {
+        executorService.execute(() -> {
+            SurveyRecordDao surveyRecordDao = SurveyDatabase.getInstance(getContext()).surveyRecordDao();
+            int totalCellularRecordsForUpload = NsUploaderWorker.getTotalCellularRecordsForUpload(surveyRecordDao);
+            binding.cellularUploadQueueCount.setText(getString(R.string.cellular_upload_queue_count, totalCellularRecordsForUpload));
+
+            int wifiRecordCountForUpload = surveyRecordDao.getWifiRecordCountForUpload();
+            binding.wifiUploadQueueCount.setText(getString(R.string.wifi_upload_queue_count, wifiRecordCountForUpload));
+        });
     }
 
     /**

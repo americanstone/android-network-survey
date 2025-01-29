@@ -78,7 +78,7 @@ public class NsUploaderWorker extends Worker
             isRetryEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, false);
             // TODO Get the OpenCelliD API key from the input data, or a shared key from the app
 
-            int totalRecords = getTotalRecordsForUpload(database.surveyRecordDao());
+            int totalRecords = getTotalCellularRecordsForUpload(database.surveyRecordDao());
             if (totalRecords == 0)
             {
                 Timber.d("UploaderWorker: No records to upload.");
@@ -343,7 +343,7 @@ public class NsUploaderWorker extends Worker
     /**
      * Sums up the total number of records to be uploaded for all cellular protocols.
      */
-    public int getTotalRecordsForUpload(SurveyRecordDao surveyRecordDao)
+    public static int getTotalCellularRecordsForUpload(SurveyRecordDao surveyRecordDao)
     {
         return surveyRecordDao.getNrRecordCountForUpload()
                 + surveyRecordDao.getLteRecordCountForUpload()

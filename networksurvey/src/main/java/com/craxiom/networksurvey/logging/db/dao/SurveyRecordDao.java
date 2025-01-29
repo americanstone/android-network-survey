@@ -8,6 +8,7 @@ import com.craxiom.networksurvey.logging.db.model.GsmRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.LteRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.NrRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.UmtsRecordEntity;
+import com.craxiom.networksurvey.logging.db.model.WifiBeaconRecordEntity;
 
 import java.util.List;
 
@@ -78,4 +79,14 @@ public interface SurveyRecordDao
 
     @Query("UPDATE nr_survey_records SET beaconDbUploaded = 1 WHERE id IN (:recordIds)")
     void markNrRecordsAsUploadedToBeaconDb(List<Long> recordIds);
+
+    // Wifi
+    @Query("SELECT COUNT(*) FROM wifi_survey_records WHERE beaconDbUploaded = 0")
+    int getWifiRecordCountForUpload();
+
+    @Query("SELECT * FROM wifi_survey_records WHERE beaconDbUploaded = 0 LIMIT :limit")
+    List<WifiBeaconRecordEntity> getWifiRecordsForUpload(int limit);
+
+    @Query("UPDATE wifi_survey_records SET beaconDbUploaded = 1 WHERE id IN (:recordIds)")
+    void markWifiRecordsAsUploadedToBeaconDb(List<Long> recordIds);
 }
