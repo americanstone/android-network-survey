@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import okhttp3.ResponseBody;
-import retrofit2.Call;
 import retrofit2.Response;
 import timber.log.Timber;
 
@@ -129,7 +128,7 @@ public class NsUploaderWorker extends Worker
 
         if (!nrRecords.isEmpty())
         {
-            success &= processUpload(nrRecords); // TODO Is this &= success what we want?
+            success &= processUpload(nrRecords);
         }
         if (!lteRecords.isEmpty())
         {
@@ -139,13 +138,13 @@ public class NsUploaderWorker extends Worker
         {
             success &= processUpload(umtsRecords);
         }
-        if (!gsmRecords.isEmpty())
-        {
-            success &= processUpload(gsmRecords);
-        }
         if (!cdmaRecords.isEmpty())
         {
             success &= processUpload(cdmaRecords);
+        }
+        if (!gsmRecords.isEmpty())
+        {
+            success &= processUpload(gsmRecords);
         }
 
         return success;
@@ -155,6 +154,7 @@ public class NsUploaderWorker extends Worker
     {
         boolean success = true;
         UploadResultBundle result = uploadRecords(records);
+        Timber.i("UploadResultBundle OCID=%s, BeaconDB=%s", result.getResult(UploadTarget.OpenCelliD), result.getResult(UploadTarget.BeaconDB));
         if (result.getResult(UploadTarget.OpenCelliD) == UploadResult.Success)
         {
             markRecordsAsUploadedToOcid(records);
@@ -189,13 +189,13 @@ public class NsUploaderWorker extends Worker
                 {
                     assert body != null;
                     RequestResult requestResult = OpenCelliDUploadClient.handleOcidResponse(response.code(), body);
-                    Timber.d("Upload to BeaconDB: Server response: %s", requestResult);
+                    Timber.d("Upload to OpenCelliD: Server response: %s", requestResult);
                     UploadResult uploadResult = OpenCelliDUploadClient.mapRequestResultToUploadResult(requestResult);
-                    uploadResultBundle.setResult(UploadTarget.BeaconDB, uploadResult);
+                    uploadResultBundle.setResult(UploadTarget.OpenCelliD, uploadResult);
                 } catch (Exception e)
                 {
-                    Timber.e(e, "UploaderWorker: BeaconDB upload failed due to exception.");
-                    uploadResultBundle.setResult(UploadTarget.BeaconDB, UploadResult.Failure);
+                    Timber.e(e, "UploaderWorker: OpenCelliD upload failed due to exception.");
+                    uploadResultBundle.setResult(UploadTarget.OpenCelliD, UploadResult.Failure);
                 }
             } else
             {
@@ -227,7 +227,7 @@ public class NsUploaderWorker extends Worker
                 uploadResultBundle.markSuccessful(UploadTarget.BeaconDB);
             }
 
-            BeaconDbUploadClient beaconDbClient = BeaconDbUploadClient.getInstance();
+            /*BeaconDbUploadClient beaconDbClient = BeaconDbUploadClient.getInstance();
             beaconDbClient.uploadToCustomEndpoint("http://172.22.51.71:8080/v2/geosubmit", recordsWrapper)
                     .enqueue(new retrofit2.Callback<>()
                     {
@@ -248,7 +248,7 @@ public class NsUploaderWorker extends Worker
                         {
                             Timber.e(t, "UploaderWorker: OpenCellID upload failed due to exception.");
                         }
-                    });
+                    });*/
 
             return uploadResultBundle;
         } catch (Exception e)
@@ -286,7 +286,7 @@ public class NsUploaderWorker extends Worker
                 database.surveyRecordDao().markCdmaRecordsAsUploadedToOcid(recordIds);
             }
 
-            Timber.d("UploaderWorker: %d records marked as uploaded.", records.size());
+            Timber.d("UploaderWorker: %d records marked as uploaded to OCID.", records.size());
         });
     }
 
@@ -317,7 +317,7 @@ public class NsUploaderWorker extends Worker
                 database.surveyRecordDao().markCdmaRecordsAsUploadedToBeaconDb(recordIds);
             }
 
-            Timber.d("UploaderWorker: %d records marked as uploaded.", records.size());
+            Timber.d("UploaderWorker: %d records marked as uploaded to BeaconDB.", records.size());
         });
     }
 

@@ -17,6 +17,8 @@ import android.location.LocationProvider;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -85,6 +87,19 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     private FragmentDashboardBinding binding;
     private DashboardViewModel viewModel;
 
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable updateUploadCountsRunnable = new Runnable()
+    {
+        @Override
+        public void run()
+        {
+            queryUploadQueueCount();
+
+            // Re-run every 15 seconds as long as the UI is visible
+            handler.postDelayed(this, 15_000);
+        }
+    };
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState)
@@ -97,7 +112,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         initializeUiListeners();
         initializeObservers();
         initializeUploadEnabledState();
-        updateUploadQueueCount();
+        queryUploadQueueCount();
 
         return binding.getRoot();
     }
@@ -113,6 +128,15 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         initializeLocationTextView();
 
         startAndBindToService();
+
+        handler.post(updateUploadCountsRunnable);
+    }
+
+    @Override
+    public void onPause()
+    {
+        handler.removeCallbacks(updateUploadCountsRunnable);
+        super.onPause();
     }
 
     @Override
@@ -555,6 +579,9 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     private void initializeObservers()
     {
         final LifecycleOwner viewLifecycleOwner = getViewLifecycleOwner();
+
+        viewModel.getCellularUploadQueueCount().observe(viewLifecycleOwner, this::updateCellularUploadQueueCountUI);
+        viewModel.getWifiUploadQueueCount().observe(viewLifecycleOwner, this::updateWifiUploadQueueCountUI);
 
         viewModel.getProviderEnabled().observe(viewLifecycleOwner, this::updateLocationProviderStatus);
         viewModel.getLocation().observe(viewLifecycleOwner, this::updateLocationTextView);
@@ -1030,16 +1057,26 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         }
     }
 
-    private void updateUploadQueueCount()
+    private void queryUploadQueueCount()
     {
         executorService.execute(() -> {
             SurveyRecordDao surveyRecordDao = SurveyDatabase.getInstance(getContext()).surveyRecordDao();
             int totalCellularRecordsForUpload = NsUploaderWorker.getTotalCellularRecordsForUpload(surveyRecordDao);
-            binding.cellularUploadQueueCount.setText(getString(R.string.cellular_upload_queue_count, totalCellularRecordsForUpload));
+            viewModel.setCellularUploadQueueCount(totalCellularRecordsForUpload);
 
             int wifiRecordCountForUpload = surveyRecordDao.getWifiRecordCountForUpload();
-            binding.wifiUploadQueueCount.setText(getString(R.string.wifi_upload_queue_count, wifiRecordCountForUpload));
+            viewModel.setWifiUploadQueueCount(wifiRecordCountForUpload);
         });
+    }
+
+    private void updateCellularUploadQueueCountUI(int count)
+    {
+        binding.cellularUploadQueueCount.setText(getString(R.string.cellular_upload_queue_count, count));
+    }
+
+    private void updateWifiUploadQueueCountUI(int count)
+    {
+        binding.wifiUploadQueueCount.setText(getString(R.string.wifi_upload_queue_count, count));
     }
 
     /**

@@ -112,7 +112,7 @@ public interface BeaconDbUploadClient
             case Success ->
             {
                 Timber.d("Upload successful.");
-                yield UploadResult.PartiallySucceeded;
+                yield UploadResult.Success;
             }
             default -> throw new UnsupportedOperationException(
                     String.format("Unsupported upload result: %s", response)

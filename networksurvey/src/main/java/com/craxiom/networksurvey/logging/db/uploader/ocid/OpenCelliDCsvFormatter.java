@@ -80,7 +80,7 @@ public class OpenCelliDCsvFormatter
     private static String formatNrRecord(NrRecordEntity record)
     {
         return String.format(Locale.US,
-                "%.6f,%.6f,%d,%d,,,%d,,%d,,,%d,%s,%d,%s,%d,%.2f,%s,\"%s\"",
+                "%.6f,%.6f,%d,%d,,,%d,,%d,,,%d,%s,%d,%s,%d,%.2f,,%s,\"%s\"",
                 record.latitude, record.longitude, record.mcc, record.mnc,
                 record.tac, record.nci, record.pci, formatSignal(record.ssRsrp),
                 record.ta, formatTimestamp(record.deviceTime), record.accuracy, record.speed, "NR", DEVICE_MODEL

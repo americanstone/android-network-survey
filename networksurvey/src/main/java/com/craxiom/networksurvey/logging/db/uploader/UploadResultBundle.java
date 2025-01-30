@@ -21,10 +21,9 @@ public class UploadResultBundle
         return results.getOrDefault(target, UploadResult.NotStarted);
     }
 
-    public boolean markSuccessful(UploadTarget target)
+    public void markSuccessful(UploadTarget target)
     {
-        UploadResult result = results.get(target);
-        return result == UploadResult.Success || result == UploadResult.PartiallySucceeded;
+        results.put(target, UploadResult.Success);
     }
 
     public void setResult(UploadTarget target, UploadResult result)
