@@ -38,6 +38,15 @@ fun MainCompose(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val viewModel = viewModel<SharedViewModel>()
+    LaunchedEffect(viewModel.navigateToUploadSettings) {
+        viewModel.navigateToUploadSettings.observe(lifecycleOwner) { shouldNavigate ->
+            if (shouldNavigate) {
+                mainNavController.navigate(NavOption.UploadSettings.name)
+                viewModel.resetNavigationFlag()
+            }
+        }
+    }
+
     LaunchedEffect(viewModel.navigateToQrCodeScanner) {
         viewModel.navigateToQrCodeScanner.observe(lifecycleOwner) { shouldNavigate ->
             if (shouldNavigate) {

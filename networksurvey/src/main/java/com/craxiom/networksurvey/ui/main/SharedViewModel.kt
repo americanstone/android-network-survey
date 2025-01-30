@@ -15,6 +15,9 @@ import javax.inject.Inject
 @HiltViewModel
 class SharedViewModel @Inject constructor(application: Application) :
     AndroidViewModel(application) {
+    private val _navigateToUploadSettings = MutableLiveData(false)
+    val navigateToUploadSettings: LiveData<Boolean> = _navigateToUploadSettings
+
     private val _navigateToQrCodeScanner = MutableLiveData(false)
     val navigateToQrCodeScanner: LiveData<Boolean> = _navigateToQrCodeScanner
 
@@ -53,6 +56,10 @@ class SharedViewModel @Inject constructor(application: Application) :
 
     private val _navigateToSettings = MutableLiveData(false)
     val navigateToSettings: LiveData<Boolean> = _navigateToSettings
+
+    fun triggerNavigationToUploadSettings() {
+        _navigateToUploadSettings.value = true
+    }
 
     fun triggerNavigationToQrCodeScanner(mqttConnectionSettings: MqttConnectionSettings) {
         _mqttConnectionSettings = mqttConnectionSettings

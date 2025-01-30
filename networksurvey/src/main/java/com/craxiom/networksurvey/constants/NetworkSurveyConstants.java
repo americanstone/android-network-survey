@@ -160,6 +160,7 @@ public class NetworkSurveyConstants
     public static final String PROPERTY_UPLOAD_TO_OPENCELLID = "upload_to_opencellid";
     public static final String PROPERTY_UPLOAD_TO_BEACONDB = "upload_to_beacondb";
     public static final String PROPERTY_UPLOAD_RETRY_ENABLED = "upload_retry_enabled";
+    public static final String PROPERTY_OCID_API_KEY = "ocid_api_key";
 
     // Stored Preferences not exposed via the Settings UI
     public static final String PROPERTY_NETWORK_SURVEY_CONNECTION_HOST = "connection_host";

@@ -17,6 +17,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.DropDownPreference;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
@@ -27,6 +28,7 @@ import androidx.preference.SwitchPreferenceCompat;
 
 import com.craxiom.networksurvey.R;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.MdmUtils;
 import com.craxiom.networksurvey.util.SettingsUtils;
 
@@ -77,6 +79,16 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         setAppInstanceId();
 
         updateUiForMdmIfNecessary();
+
+        final Preference uploadSettings = findPreference("upload_preferences");
+        if (uploadSettings != null)
+        {
+            uploadSettings.setOnPreferenceClickListener(preference -> {
+                SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+                viewModel.triggerNavigationToUploadSettings();
+                return true;
+            });
+        }
     }
 
     @Override

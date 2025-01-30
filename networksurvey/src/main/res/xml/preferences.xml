@@ -75,6 +75,13 @@
             app:key="log_file_type"
             app:useSimpleSummaryProvider="true"
             app:title="@string/log_file_title" />
+
+        <Preference
+            app:key="upload_preferences"
+            app:title="Upload Settings"
+            app:summary="Configure data upload options including OpenCelliD API key"
+            app:fragment="com.craxiom.networksurvey.fragments.UploadSettingsFragment" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Enable Upload to OpenCellID -->
+    <SwitchPreferenceCompat
+        app:key="upload_to_opencellid"
+        app:title="Upload to OpenCellID"
+        app:summary="Enable or disable uploading to OpenCellID" />
+
+    <!-- Enable Upload to BeaconDB -->
+    <SwitchPreferenceCompat
+        app:key="upload_to_beacondb"
+        app:title="Upload to BeaconDB"
+        app:summary="Enable or disable uploading to BeaconDB" />
+
+    <!-- Enable Retry on Failure -->
+    <SwitchPreferenceCompat
+        app:key="upload_retry_enabled"
+        app:title="Retry Failed Uploads"
+        app:summary="Automatically retry uploads on failure" />
+
+    <!-- OpenCellID API Key -->
+    <EditTextPreference
+        app:key="ocid_api_key"
+        app:title="OpenCellID API Key"
+        app:summary="Enter your OpenCellID API Key"
+        app:useSimpleSummaryProvider="true"
+        app:dialogTitle="Enter OpenCellID API Key"
+        android:inputType="textPassword" />
+
+</PreferenceScreen>

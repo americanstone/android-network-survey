@@ -22,6 +22,7 @@ import com.craxiom.networksurvey.databinding.ContainerMqttQrCodeScannerFragmentB
 import com.craxiom.networksurvey.databinding.ContainerMqttQrCodeShareFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerSettingsFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerTowerMapFragmentBinding
+import com.craxiom.networksurvey.databinding.ContainerUploadSettingsFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerWifiDetailsFragmentBinding
 import com.craxiom.networksurvey.databinding.ContainerWifiSpectrumFragmentBinding
 import com.craxiom.networksurvey.fragments.BLUETOOTH_DATA_KEY
@@ -86,6 +87,10 @@ fun NavGraphBuilder.mainGraph(
 
         // --------- Deeper navigation (beyond the nav drawer) --------- //
 
+        composable(NavOption.UploadSettings.name) {
+            UploadSettingsFragmentInCompose(mainNavController)
+        }
+
         composable(NavOption.QrCodeScanner.name) {
             QrCodeScannerInCompose(mainNavController)
         }
@@ -137,6 +142,7 @@ enum class NavDrawerOption {
 }
 
 enum class NavOption {
+    UploadSettings,
     QrCodeScanner,
     QrCodeShare,
     TowerMap,
@@ -183,6 +189,19 @@ fun SettingsFragmentInCompose(mainNavController: NavHostController) {
     ) { innerPadding ->
         AndroidViewBinding(
             ContainerSettingsFragmentBinding::inflate,
+            modifier = Modifier.padding(paddingValues = innerPadding)
+        ) {
+        }
+    }
+}
+
+@Composable
+fun UploadSettingsFragmentInCompose(mainNavController: NavHostController) {
+    Scaffold(
+        topBar = { TitleBar("Upload Settings") { mainNavController.navigateUp() } },
+    ) { innerPadding ->
+        AndroidViewBinding(
+            ContainerUploadSettingsFragmentBinding::inflate,
             modifier = Modifier.padding(paddingValues = innerPadding)
         ) {
         }
