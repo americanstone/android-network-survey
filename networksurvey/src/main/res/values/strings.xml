@@ -24,6 +24,32 @@
     <string name="request">Request</string>
     <string name="ignore">Continue Without Permissions</string>
 
+    <string name="upload_help_title">Upload Information</string>
+    <string name="view_manual">View Manual</string>
+    <string name="upload_help">
+        <![CDATA[
+        The upload feature allows you to share collected cellular and Wi-Fi survey data with third-party databases.<br/><br/>
+        <b>How This Feature Works:</b><br/>
+        &#8226; When enabled, survey records collected by the app are written to an internal database. You can then decide whether to upload the stored records to the selected destinations.<br/>
+        &#8226; When disabled, no survey data is written to the internal database, and no survey data is uploaded to a third-party database.<br/><br/>
+
+        <b>Where Your Data Goes:</b><br/>
+        Your survey data will be uploaded to one or both of the following services, depending on your selections:<br/>
+        &#8226; <a href="https://www.opencellid.org/"><b>OpenCelliD</b></a> - A global open-source cell tower database.<br/>
+        &#8226; <a href="https://api.beacondb.net/"><b>BeaconDB</b></a> - A crowdsourced geolocation database.<br/><br/>
+
+        <b>What Data Is Uploaded:</b><br/>
+        &#8226; <b>Device Location</b> (Latitude, Longitude, Altitude, Accuracy, Speed)<br/>
+        &#8226; <b>Cellular Information</b> (MCC, MNC, TAC/LAC, Cell ID, Signal Strength, Timing Advance, PCI, ARFCN, etc.)<br/>
+        &#8226; <b>Wi-Fi Information</b> (SSID, BSSID, Frequency, Channel, Signal Strength, Encryption Type)<br/>
+        &#8226; <b>Timestamp</b> of Collection<br/><br/>
+
+        Data is anonymized and used to improve cellular and Wi-Fi coverage mapping, as well as enhance the BeaconDB geolocation service.<br/><br/>
+
+        <a href="https://networksurvey.app/manual#data-upload">For more details, visit the Network Survey User Manual.</a>
+        ]]>
+    </string>
+
     <string name="cdr_help_title">CDR Information</string>
     <string name="cdr_help">What is a CDR? A CDR is a Call Detail Record that has an event for specific
         interaction a phone has with the cellular network. For example, a phone call, sms messages, and certain tower

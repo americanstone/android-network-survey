@@ -6,6 +6,7 @@ import static com.craxiom.networksurvey.constants.CdrPermissions.CDR_REQUIRED_PE
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
@@ -14,11 +15,14 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -331,6 +335,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
 
         binding.mqttFragmentButton.setOnClickListener(c -> navigateToMqttFragment());
 
+        binding.uploadHelpIcon.setOnClickListener(c -> showUploadHelpDialog());
         binding.cdrHelpIcon.setOnClickListener(c -> showCdrHelpDialog());
         binding.fileHelpIcon.setOnClickListener(c -> showFileMqttHelpDialog());
         binding.mqttHelpIcon.setOnClickListener(c -> showFileMqttHelpDialog());
@@ -519,6 +524,34 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         {
             ActivityCompat.requestPermissions(getActivity(), CDR_OPTIONAL_PERMISSIONS, ACCESS_OPTIONAL_PERMISSION_REQUEST_ID);
         }
+    }
+
+    /**
+     * Displays a dialog with some information about uploading records.
+     */
+    private void showUploadHelpDialog()
+    {
+        final Context context = getContext();
+        if (context == null) return;
+
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View dialogView = inflater.inflate(R.layout.dialog_upload_help, null);
+        TextView helpTextView = dialogView.findViewById(R.id.tvUploadHelpText);
+        helpTextView.setText(Html.fromHtml(getString(R.string.upload_help), Html.FROM_HTML_MODE_LEGACY));
+        helpTextView.setMovementMethod(LinkMovementMethod.getInstance()); // Enable link clicking
+
+
+        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(context);
+        alertBuilder.setView(dialogView);
+        alertBuilder.setCancelable(true);
+        alertBuilder.setTitle(getString(R.string.upload_help_title));
+        alertBuilder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+        });
+        alertBuilder.setNeutralButton(R.string.view_manual, (dialog, which) -> {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://networksurvey.app/manual#data-upload"));
+            context.startActivity(browserIntent);
+        });
+        alertBuilder.create().show();
     }
 
     /**
