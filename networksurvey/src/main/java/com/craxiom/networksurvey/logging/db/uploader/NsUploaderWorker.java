@@ -1,5 +1,7 @@
 package com.craxiom.networksurvey.logging.db.uploader;
 
+import static com.craxiom.networksurvey.logging.db.uploader.ocid.OpenCelliDCsvConverterFactory.MEDIA_TYPE_CSV;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -12,6 +14,7 @@ import androidx.work.ForegroundInfo;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.craxiom.networksurvey.BuildConfig;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
 import com.craxiom.networksurvey.logging.db.SurveyDatabase;
 import com.craxiom.networksurvey.logging.db.dao.SurveyRecordDao;
@@ -21,10 +24,14 @@ import com.craxiom.networksurvey.logging.db.model.GsmRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.LteRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.NrRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.UmtsRecordEntity;
+import com.craxiom.networksurvey.logging.db.uploader.ocid.OpenCelliDCsvFormatter;
+import com.craxiom.networksurvey.util.PreferenceUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Response;
 import timber.log.Timber;
@@ -41,6 +48,7 @@ public class NsUploaderWorker extends Worker
 
     public static final int NOTIFICATION_ID = 102;
     private static final int LOCATIONS_PER_PART = 100; // Batch size for uploads
+    public static final String OCID_APP_ID = "NetworkSurvey " + BuildConfig.VERSION_NAME;
 
     private final NotificationManager notificationManager;
     private final UploaderNotificationHelper notificationHelper;
@@ -183,8 +191,16 @@ public class NsUploaderWorker extends Worker
 
             if (isOpenCellIdUploadEnabled)
             {
+                final String ocidApiKeyString = PreferenceUtils.getOpenCelliDApiKey(getApplicationContext());
+                RequestBody apiKey = RequestBody.create(ocidApiKeyString, MultipartBody.FORM);
+                RequestBody appId = RequestBody.create(OCID_APP_ID, MultipartBody.FORM);
+
+                String csvContent = OpenCelliDCsvFormatter.formatRecords(recordsWrapper);
+                RequestBody requestFile = RequestBody.create(csvContent, MEDIA_TYPE_CSV);
+                MultipartBody.Part multipartFile = MultipartBody.Part.createFormData("datafile", "NetworkSurvey_measurements_" + System.currentTimeMillis() + ".csv", requestFile);
+
                 OpenCelliDUploadClient ocidClient = OpenCelliDUploadClient.getInstance();
-                Response<ResponseBody> response = ocidClient.uploadToOcid(recordsWrapper).execute();
+                Response<ResponseBody> response = ocidClient.uploadToOcid(apiKey, appId, multipartFile).execute();
                 try (ResponseBody body = response.body())
                 {
                     assert body != null;

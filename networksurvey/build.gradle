@@ -25,6 +25,7 @@ android {
     defaultConfig {
         buildConfigField "String", "MESSAGING_API_VERSION", "\"${networkSurveyMessagingVersion}\""
         buildConfigField 'String', "NS_API_KEY", "\"${nsApiKey}\""
+        buildConfigField 'String', "OCID_API_KEY", "\"${ocidApiKey}\""
         applicationId "com.craxiom.networksurvey"
         minSdkVersion 26
         targetSdkVersion 35

@@ -5,12 +5,11 @@ import static com.google.common.net.HttpHeaders.USER_AGENT;
 import androidx.annotation.NonNull;
 
 import com.craxiom.networksurvey.BuildConfig;
-import com.craxiom.networksurvey.logging.db.model.CellularRecordsWrapper;
-import com.craxiom.networksurvey.logging.db.uploader.ocid.OpenCelliDCsvConverterFactory;
 
 import java.io.IOException;
 
 import okhttp3.Interceptor;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -18,8 +17,9 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Retrofit;
-import retrofit2.http.Body;
+import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.Part;
 import timber.log.Timber;
 
 /**
@@ -27,12 +27,13 @@ import timber.log.Timber;
  */
 public interface OpenCelliDUploadClient
 {
-    // TODO @POST("measure/uploadCsv")
-    @POST("v2/geosubmit")
-    Call<ResponseBody> uploadToOcid(@Body CellularRecordsWrapper records);
-
-    @POST("measure/uploadCsv")
-    Call<ResponseBody> uploadToOcid(@Body RequestBody csvBody);
+    @Multipart
+    @POST("/measure/uploadCsv")
+    Call<ResponseBody> uploadToOcid(
+            @Part("key") RequestBody apiKey,
+            @Part("appId") RequestBody appId,
+            @Part MultipartBody.Part dataFile
+    );
 
     static OpenCelliDUploadClient getInstance()
     {
@@ -44,7 +45,6 @@ public interface OpenCelliDUploadClient
                 // FIXME Change this back.baseUrl(UploadConstants.OPENCELLID_URL)
                 .baseUrl("http://172.22.51.71:8080/")
                 .client(client)
-                .addConverterFactory(OpenCelliDCsvConverterFactory.create())  // Add custom converter
                 .build()
                 .create(OpenCelliDUploadClient.class);
     }

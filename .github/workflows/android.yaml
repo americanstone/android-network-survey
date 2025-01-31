@@ -30,8 +30,10 @@ jobs:
       - name: Build CDR APK
         env:
           NS_API_KEY: ${{ secrets.NS_API_KEY }}
+          OCID_API_KEY: ${{ secrets.OCID_API_KEY }}
         run: ./gradlew assembleCdrDebug
           -PnsApiKey=$NS_API_KEY
+          -PocidApiKey=$OCID_API_KEY
 
       - name: Get APK name
         run: echo "base_name=`./gradlew :networksurvey:properties -q | grep 'archivesBaseName:' | awk '{print $2}'`" >> $GITHUB_ENV
@@ -50,8 +52,10 @@ jobs:
       - name: Build Regular APK
         env:
           NS_API_KEY: ${{ secrets.NS_API_KEY }}
+          OCID_API_KEY: ${{ secrets.OCID_API_KEY }}
         run: ./gradlew assembleRegularDebug
           -PnsApiKey=$NS_API_KEY
+          -PocidApiKey=$OCID_API_KEY
 
       - name: Upload Regular APK
         uses: actions/upload-artifact@v4
@@ -88,16 +92,6 @@ jobs:
 
       - name: Unit Tests
         run: ./gradlew test --stacktrace
-
-# Need to work through a permissions error to get these working
-#      - name: Instrumentation Tests
-#        uses: reactivecircus/android-emulator-runner@v2
-#        with:
-#          api-level: ${{ matrix.api-level }}
-#          target: ${{ matrix.target }}
-#          arch: x86_64
-#          profile: Nexus 6
-#          script: ./gradlew test check connectedCheck -x lint --stacktrace
 
       # Only upload the reports on failure
       - name: Upload Reports

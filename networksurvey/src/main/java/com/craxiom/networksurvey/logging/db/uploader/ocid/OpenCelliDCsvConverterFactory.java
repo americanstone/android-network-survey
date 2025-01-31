@@ -14,7 +14,7 @@ import retrofit2.Retrofit;
 
 public class OpenCelliDCsvConverterFactory extends Converter.Factory
 {
-    private static final MediaType MEDIA_TYPE_CSV = MediaType.parse("text/csv; charset=UTF-8");
+    public static final MediaType MEDIA_TYPE_CSV = MediaType.parse("text/csv; charset=UTF-8");
 
     public static OpenCelliDCsvConverterFactory create()
     {

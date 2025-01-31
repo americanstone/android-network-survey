@@ -76,12 +76,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           NS_API_KEY: ${{ secrets.NS_API_KEY }}
+          OCID_API_KEY: ${{ secrets.OCID_API_KEY }}
         run: ./gradlew assembleCdrRelease
           -Pandroid.injected.signing.store.file=$(pwd)/my.keystore
           -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD
           -Pandroid.injected.signing.key.alias=$KEY_ALIAS
           -Pandroid.injected.signing.key.password=$KEY_PASSWORD
           -PnsApiKey=$NS_API_KEY
+          -PocidApiKey=$OCID_API_KEY
 
       - name: Get base name
         id: basenamestep
@@ -108,12 +110,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           NS_API_KEY: ${{ secrets.NS_API_KEY }}
+          OCID_API_KEY: ${{ secrets.OCID_API_KEY }}
         run: ./gradlew assembleRegularRelease
           -Pandroid.injected.signing.store.file=$(pwd)/my.keystore
           -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD
           -Pandroid.injected.signing.key.alias=$KEY_ALIAS
           -Pandroid.injected.signing.key.password=$KEY_PASSWORD
           -PnsApiKey=$NS_API_KEY
+          -PocidApiKey=$OCID_API_KEY
 
       - name: Upload Regular APK
         uses: actions/upload-artifact@v4
@@ -127,12 +131,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           NS_API_KEY: ${{ secrets.NS_API_KEY }}
+          OCID_API_KEY: ${{ secrets.OCID_API_KEY }}
         run: ./gradlew bundleRelease
           -Pandroid.injected.signing.store.file=$(pwd)/my.keystore
           -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD
           -Pandroid.injected.signing.key.alias=$KEY_ALIAS
           -Pandroid.injected.signing.key.password=$KEY_PASSWORD
           -PnsApiKey=$NS_API_KEY
+          -PocidApiKey=$OCID_API_KEY
 
       - name: Upload Release Bundle
         uses: actions/upload-artifact@v4
