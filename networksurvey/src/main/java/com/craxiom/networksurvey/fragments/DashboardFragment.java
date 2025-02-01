@@ -351,6 +351,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         boolean prefUploadToOpenCellId = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
+        boolean prefAnonymously = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
         boolean prefUploadToBeaconDb = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_BEACONDB);
         boolean prefRetryUpload = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_RETRY_ENABLED);
 
@@ -360,20 +361,23 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         builder.setView(dialogView);
 
         CheckBox checkOpenCellId = dialogView.findViewById(R.id.checkOpenCellId);
+        CheckBox checkAnonymously = dialogView.findViewById(R.id.checkAnonymously);
         CheckBox checkBeaconDB = dialogView.findViewById(R.id.checkBeaconDB);
         CheckBox checkRetry = dialogView.findViewById(R.id.checkRetry);
 
         checkOpenCellId.setChecked(prefUploadToOpenCellId);
+        checkAnonymously.setChecked(prefAnonymously);
         checkBeaconDB.setChecked(prefUploadToBeaconDb);
         checkRetry.setChecked(prefRetryUpload);
 
         builder.setTitle("Upload Options")
                 .setPositiveButton("Upload", (dialog, which) -> {
                     boolean uploadToOpenCellId = checkOpenCellId.isChecked();
+                    boolean anonymously = checkAnonymously.isChecked();
                     boolean uploadToBeaconDB = checkBeaconDB.isChecked();
                     boolean enableRetry = checkRetry.isChecked();
 
-                    startUploadWorker(uploadToOpenCellId, uploadToBeaconDB, enableRetry);
+                    startUploadWorker(uploadToOpenCellId, anonymously, uploadToBeaconDB, enableRetry);
                 })
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
@@ -539,7 +543,6 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         TextView helpTextView = dialogView.findViewById(R.id.tvUploadHelpText);
         helpTextView.setText(Html.fromHtml(getString(R.string.upload_help), Html.FROM_HTML_MODE_LEGACY));
         helpTextView.setMovementMethod(LinkMovementMethod.getInstance()); // Enable link clicking
-
 
         AlertDialog.Builder alertBuilder = new AlertDialog.Builder(context);
         alertBuilder.setView(dialogView);
@@ -1115,7 +1118,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     /**
      * Trigger the upload worker to upload the data to the specified services.
      */
-    private void startUploadWorker(boolean uploadToOpenCellId, boolean uploadToBeaconDB, boolean retry)
+    private void startUploadWorker(boolean uploadToOpenCellId, boolean anonymouslyToOpencelliD, boolean uploadToBeaconDB, boolean retry)
     {
         final Context context = getContext();
         if (context == null) return;
@@ -1135,12 +1138,14 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         final SharedPreferences.Editor edit = sharedPreferences.edit();
         edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, uploadToOpenCellId);
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, anonymouslyToOpencelliD);
         edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, uploadToBeaconDB);
         edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, retry);
         edit.apply();
 
         Data inputData = new Data.Builder()
                 .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, uploadToOpenCellId)
+                .putBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, anonymouslyToOpencelliD)
                 .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, uploadToBeaconDB)
                 .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, retry)
                 .build();

@@ -170,6 +170,7 @@ but work independently, so you have full control over how you handle your data.<
     <string name="upload_button_text">Upload\nRecords</string>
     <string name="upload_survey_records">Upload Survey Records</string>
     <string name="upload_to_opencellid">Upload to OpenCelliD</string>
+    <string name="anonymously">Anonymously</string>
     <string name="upload_to_beacondb">Upload to BeaconDB</string>
     <string name="retry_on_failure">Retry on failure</string>
 

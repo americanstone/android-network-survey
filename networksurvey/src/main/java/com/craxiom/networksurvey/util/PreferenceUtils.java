@@ -851,8 +851,13 @@ public class PreferenceUtils
         return BuildConfig.OCID_API_KEY.equalsIgnoreCase(apiKey);
     }
 
-    public static String getOpenCelliDApiKey(Context context)
+    public static String getOpenCelliDApiKey(Context context, boolean anonymousUploadToOcid)
     {
+        if (anonymousUploadToOcid)
+        {
+            return getSharedApiKey(context);
+        }
+
         // Retrieve the user-set API key from preferences
         String userApiKey = getUserApiKey(context);
 

@@ -55,6 +55,7 @@ public class NsUploaderWorker extends Worker
     private final SurveyDatabase database;
 
     private boolean isOpenCellIdUploadEnabled;
+    private boolean anonymousUploadToOcid;
     private boolean isBeaconDBUploadEnabled;
     private boolean isRetryEnabled;
 
@@ -81,6 +82,7 @@ public class NsUploaderWorker extends Worker
 
             // Read work input parameters
             isOpenCellIdUploadEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, false);
+            anonymousUploadToOcid = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, false);
             isBeaconDBUploadEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, false);
             isRetryEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, false);
             // TODO Get the OpenCelliD API key from the input data, or a shared key from the app
@@ -191,7 +193,7 @@ public class NsUploaderWorker extends Worker
 
             if (isOpenCellIdUploadEnabled)
             {
-                final String ocidApiKeyString = PreferenceUtils.getOpenCelliDApiKey(getApplicationContext());
+                final String ocidApiKeyString = PreferenceUtils.getOpenCelliDApiKey(getApplicationContext(), anonymousUploadToOcid);
                 RequestBody apiKey = RequestBody.create(ocidApiKeyString, MultipartBody.FORM);
                 RequestBody appId = RequestBody.create(OCID_APP_ID, MultipartBody.FORM);
 

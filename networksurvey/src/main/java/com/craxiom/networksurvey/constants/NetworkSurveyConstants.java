@@ -158,6 +158,7 @@ public class NetworkSurveyConstants
     public static final String PROPERTY_GRPC_DEVICE_STATUS_STREAM_ENABLED = "grpc_device_status_stream_enabled";
 
     public static final String PROPERTY_UPLOAD_TO_OPENCELLID = "upload_to_opencellid";
+    public static final String PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD = "anonymous_opencellid_upload";
     public static final String PROPERTY_UPLOAD_TO_BEACONDB = "upload_to_beacondb";
     public static final String PROPERTY_UPLOAD_RETRY_ENABLED = "upload_retry_enabled";
     public static final String PROPERTY_OCID_API_KEY = "ocid_api_key";
