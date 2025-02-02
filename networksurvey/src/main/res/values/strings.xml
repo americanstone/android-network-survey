@@ -171,6 +171,7 @@ but work independently, so you have full control over how you handle your data.<
     <string name="upload_survey_records">Upload Survey Records</string>
     <string name="upload_to_opencellid">Upload to OpenCelliD</string>
     <string name="anonymously">Anonymously</string>
+    <string name="access_token_warning">You have to enter a valid access token in preferences</string>
     <string name="upload_to_beacondb">Upload to BeaconDB</string>
     <string name="retry_on_failure">Retry on failure</string>
 
@@ -738,4 +739,5 @@ but work independently, so you have full control over how you handle your data.<
     <string name="uploader_no_internet_title">Internet unavailable</string>
     <string name="uploader_no_internet_message">Cannot upload due to no Internet connection.</string>
     <string name="dialog_cancel">Cancel</string>
+    <string name="preferences">Preferences</string>
 </resources>

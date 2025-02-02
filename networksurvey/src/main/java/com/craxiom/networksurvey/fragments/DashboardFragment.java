@@ -360,29 +360,54 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         View dialogView = inflater.inflate(R.layout.dialog_upload, null);
         builder.setView(dialogView);
 
-        CheckBox checkOpenCellId = dialogView.findViewById(R.id.checkOpenCellId);
-        CheckBox checkAnonymously = dialogView.findViewById(R.id.checkAnonymously);
-        CheckBox checkBeaconDB = dialogView.findViewById(R.id.checkBeaconDB);
-        CheckBox checkRetry = dialogView.findViewById(R.id.checkRetry);
+        CheckBox ocidUploadCheckbox = dialogView.findViewById(R.id.checkOpenCellId);
+        CheckBox anonymousOcidUploadCheckbox = dialogView.findViewById(R.id.checkAnonymously);
+        TextView accessTokenWarningMessage = dialogView.findViewById(R.id.accessTokenWarningMessage);
+        CheckBox beaconDbUploadCheckbox = dialogView.findViewById(R.id.checkBeaconDB);
+        CheckBox retryUploadCheckbox = dialogView.findViewById(R.id.checkRetry);
 
-        checkOpenCellId.setChecked(prefUploadToOpenCellId);
-        checkAnonymously.setChecked(prefAnonymously);
-        checkBeaconDB.setChecked(prefUploadToBeaconDb);
-        checkRetry.setChecked(prefRetryUpload);
+        ocidUploadCheckbox.setOnCheckedChangeListener((buttonView, uploadToOcid) -> {
+            anonymousOcidUploadCheckbox.setEnabled(uploadToOcid);
+            updateOcidKeyWarningMessage(uploadToOcid, anonymousOcidUploadCheckbox.isChecked(), accessTokenWarningMessage, context);
+        });
 
-        builder.setTitle("Upload Options")
+        anonymousOcidUploadCheckbox.setOnCheckedChangeListener((buttonView, anonymousOcidUpload) ->
+                updateOcidKeyWarningMessage(ocidUploadCheckbox.isChecked(), anonymousOcidUpload, accessTokenWarningMessage, context));
+
+        ocidUploadCheckbox.setChecked(prefUploadToOpenCellId);
+        anonymousOcidUploadCheckbox.setChecked(prefAnonymously);
+        beaconDbUploadCheckbox.setChecked(prefUploadToBeaconDb);
+        retryUploadCheckbox.setChecked(prefRetryUpload);
+
+        builder.setTitle(getString(R.string.upload_survey_records))
                 .setPositiveButton("Upload", (dialog, which) -> {
-                    boolean uploadToOpenCellId = checkOpenCellId.isChecked();
-                    boolean anonymously = checkAnonymously.isChecked();
-                    boolean uploadToBeaconDB = checkBeaconDB.isChecked();
-                    boolean enableRetry = checkRetry.isChecked();
+                    boolean uploadToOpenCellId = ocidUploadCheckbox.isChecked();
+                    boolean anonymously = anonymousOcidUploadCheckbox.isChecked();
+                    boolean uploadToBeaconDB = beaconDbUploadCheckbox.isChecked();
+                    boolean enableRetry = retryUploadCheckbox.isChecked();
 
                     startUploadWorker(uploadToOpenCellId, anonymously, uploadToBeaconDB, enableRetry);
                 })
+                .setNeutralButton(R.string.preferences, (dialog, which) -> navigateToUploadSettings())
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+    private void updateOcidKeyWarningMessage(boolean uploadToOcid, boolean anonymousOcidUpload, TextView accessTokenWarningMessage, Context context)
+    {
+        if (uploadToOcid && !anonymousOcidUpload)
+        {
+            String userOcidApiKey = PreferenceUtils.getUserOcidApiKey(context);
+            if (!PreferenceUtils.isApiKeyValid(userOcidApiKey))
+            {
+                accessTokenWarningMessage.setVisibility(View.VISIBLE);
+            }
+        } else
+        {
+            accessTokenWarningMessage.setVisibility(View.GONE);
+        }
     }
 
     private void navigateToMqttFragment()
@@ -400,6 +425,21 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
             // and then they navigated away from the dashboard fragment and then clicked on the
             // snackbar "Open" button. In this case we will get an IllegalStateException.
             Timber.e(e, "Could not navigate to the MQTT Connection fragment");
+        }
+    }
+
+    private void navigateToUploadSettings()
+    {
+        try
+        {
+            FragmentActivity activity = getActivity();
+            if (activity == null) return;
+
+            SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+            viewModel.triggerNavigationToUploadSettings();
+        } catch (Exception e)
+        {
+            Timber.e(e, "Could not navigate to the Upload Preferences fragment");
         }
     }
 

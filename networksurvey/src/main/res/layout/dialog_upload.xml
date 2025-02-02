@@ -1,50 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:fillViewport="true"
+    android:padding="16dp">
 
-    <TextView
-        android:id="@+id/dialogTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/upload_survey_records"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_gravity="center_horizontal" />
-
-    <CheckBox
-        android:id="@+id/checkOpenCellId"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="@dimen/x_small_margin"
-        android:text="@string/upload_to_opencellid"
-        android:paddingTop="16dp" />
+        android:orientation="vertical">
 
-    <CheckBox
-        android:id="@+id/checkAnonymously"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="@dimen/x_small_margin"
-        android:layout_marginStart="@dimen/large_margin"
-        android:text="@string/anonymously"
-        android:paddingTop="16dp" />
+        <CheckBox
+            android:id="@+id/checkOpenCellId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/x_small_margin"
+            android:text="@string/upload_to_opencellid"
+            android:paddingTop="16dp" />
 
-    <CheckBox
-        android:id="@+id/checkBeaconDB"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="@dimen/x_small_margin"
-        android:text="@string/upload_to_beacondb"
-        android:paddingTop="8dp" />
+        <CheckBox
+            android:id="@+id/checkAnonymously"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/x_small_margin"
+            android:layout_marginStart="@dimen/large_margin"
+            android:text="@string/anonymously"
+            android:paddingTop="16dp" />
 
-    <CheckBox
-        android:id="@+id/checkRetry"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="@dimen/x_small_margin"
-        android:text="@string/retry_on_failure"
-        android:paddingTop="8dp" />
+        <TextView
+            android:id="@+id/accessTokenWarningMessage"
+            android:visibility="gone"
+            style="@style/DescriptionText"
+            android:textColor="@color/md_theme_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/x_small_margin"
+            android:paddingBottom="@dimen/x_small_margin"
+            android:layout_marginStart="@dimen/large_margin"
+            android:text="@string/access_token_warning" />
 
-</LinearLayout>
+        <CheckBox
+            android:id="@+id/checkBeaconDB"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/x_small_margin"
+            android:text="@string/upload_to_beacondb"
+            android:paddingTop="8dp" />
+
+        <CheckBox
+            android:id="@+id/checkRetry"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/x_small_margin"
+            android:text="@string/retry_on_failure"
+            android:paddingTop="8dp" />
+
+    </LinearLayout>
+
+</ScrollView>

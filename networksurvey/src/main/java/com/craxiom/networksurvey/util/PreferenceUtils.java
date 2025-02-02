@@ -836,7 +836,7 @@ public class PreferenceUtils
         return (apiKey.matches("pk\\.[a-fA-F0-9]{32}") || apiKey.matches("[a-fA-F0-9]{14}") || apiKey.matches("[a-fA-F0-9]{32}") || apiKey.matches("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"));
     }
 
-    public static String getUserApiKey(Context context)
+    public static String getUserOcidApiKey(Context context)
     {
         return PreferenceManager.getDefaultSharedPreferences(context).getString(NetworkSurveyConstants.PROPERTY_OCID_API_KEY, "").trim();
     }
@@ -859,7 +859,7 @@ public class PreferenceUtils
         }
 
         // Retrieve the user-set API key from preferences
-        String userApiKey = getUserApiKey(context);
+        String userApiKey = getUserOcidApiKey(context);
 
         // Check if the user-provided API key is valid
         if (isApiKeyValid(userApiKey))
