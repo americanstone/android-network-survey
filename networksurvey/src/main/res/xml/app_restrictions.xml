@@ -194,4 +194,11 @@
         android:restrictionType="bool"
         android:title="@string/allow_intent_control_title" />
 
+    <restriction
+        android:defaultValue="false"
+        android:description="@string/allow_data_upload_mdm_description"
+        android:key="allow_external_data_upload"
+        android:restrictionType="bool"
+        android:title="@string/allow_data_upload" />
+
 </restrictions>

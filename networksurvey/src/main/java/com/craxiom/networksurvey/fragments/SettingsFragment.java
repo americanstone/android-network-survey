@@ -46,7 +46,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     /**
      * The list of preferences that can be set in both the MDM app restrictions, and this settings UI.
      */
-    private static final String[] MDM_OVERLAP_PROPERTY_KEYS = {NetworkSurveyConstants.PROPERTY_AUTO_START_CELLULAR_LOGGING,
+    public static final String[] MDM_OVERLAP_PROPERTY_KEYS = {NetworkSurveyConstants.PROPERTY_AUTO_START_CELLULAR_LOGGING,
             NetworkSurveyConstants.PROPERTY_AUTO_START_WIFI_LOGGING,
             NetworkSurveyConstants.PROPERTY_AUTO_START_BLUETOOTH_LOGGING,
             NetworkSurveyConstants.PROPERTY_AUTO_START_GNSS_LOGGING,

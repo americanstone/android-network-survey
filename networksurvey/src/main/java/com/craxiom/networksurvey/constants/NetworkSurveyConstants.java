@@ -113,6 +113,9 @@ public class NetworkSurveyConstants
 
     public static final String PROPERTY_MDM_OVERRIDE_KEY = MqttConstants.PROPERTY_MQTT_MDM_OVERRIDE;
 
+    // MDM Only Preferences
+    public static final String MDM_PROPERTY_ALLOW_EXTERNAL_DATA_UPLOAD = "allow_external_data_upload";
+
     // Preferences
     public static final String PROPERTY_AUTO_START_CELLULAR_LOGGING = "auto_start_logging";
     public static final String PROPERTY_AUTO_START_WIFI_LOGGING = "auto_start_wifi_logging";
@@ -143,6 +146,11 @@ public class NetworkSurveyConstants
      * tower databases.
      */
     public static final String PROPERTY_UPLOAD_ENABLED = "upload_enabled";
+    public static final String PROPERTY_UPLOAD_TO_OPENCELLID = "upload_to_opencellid";
+    public static final String PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD = "anonymous_opencellid_upload";
+    public static final String PROPERTY_UPLOAD_TO_BEACONDB = "upload_to_beacondb";
+    public static final String PROPERTY_UPLOAD_RETRY_ENABLED = "upload_retry_enabled";
+    public static final String PROPERTY_OCID_API_KEY = "ocid_api_key";
 
     public static final String PROPERTY_MQTT_CELLULAR_STREAM_ENABLED = "cellular_stream_enabled";
     public static final String PROPERTY_MQTT_WIFI_STREAM_ENABLED = "wifi_stream_enabled";
@@ -156,12 +164,6 @@ public class NetworkSurveyConstants
     public static final String PROPERTY_GRPC_BLUETOOTH_STREAM_ENABLED = "grpc_bluetooth_stream_enabled";
     public static final String PROPERTY_GRPC_GNSS_STREAM_ENABLED = "grpc_gnss_stream_enabled";
     public static final String PROPERTY_GRPC_DEVICE_STATUS_STREAM_ENABLED = "grpc_device_status_stream_enabled";
-
-    public static final String PROPERTY_UPLOAD_TO_OPENCELLID = "upload_to_opencellid";
-    public static final String PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD = "anonymous_opencellid_upload";
-    public static final String PROPERTY_UPLOAD_TO_BEACONDB = "upload_to_beacondb";
-    public static final String PROPERTY_UPLOAD_RETRY_ENABLED = "upload_retry_enabled";
-    public static final String PROPERTY_OCID_API_KEY = "ocid_api_key";
 
     // Stored Preferences not exposed via the Settings UI
     public static final String PROPERTY_NETWORK_SURVEY_CONNECTION_HOST = "connection_host";

@@ -713,6 +713,14 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         final Context context = getContext();
         if (context == null) return;
 
+        if (MdmUtils.isExternalDataUploadAllowed(context))
+        {
+            binding.dbLoggingCardView.setVisibility(View.VISIBLE);
+        } else
+        {
+            binding.dbLoggingCardView.setVisibility(View.GONE);
+        }
+
         viewModel.setUploadEnabled(PreferenceUtils.isUploadEnabled(context));
     }
 
