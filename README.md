@@ -205,6 +205,10 @@ This project uses elements from the **[GPSTest Android app](https://github.com/b
 specifically the GPS user interface components. We appreciate the GPSTest app for making these
 resources available and acknowledge their contribution to the open source community.
 
+This project also leveraged the code from *
+*[Tower Collector](https://github.com/zamojski/TowerCollector)**
+for the upload of survey records to OpenCellID and BeaconDB. We appreciate the Tower Collector app.
+
 ### Acknowledgements
 
 We would like to express our gratitude to all the contributors who have dedicated their time and

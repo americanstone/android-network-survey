@@ -38,10 +38,12 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
 import com.craxiom.mqttlibrary.IConnectionStateListener;
@@ -65,8 +67,10 @@ import com.craxiom.networksurvey.util.NsUtils;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 import com.craxiom.networksurvey.util.ToggleLoggingTask;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.common.base.Strings;
 
 import java.text.DecimalFormat;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
@@ -1190,12 +1194,97 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
                 .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, retry)
                 .build();
 
-        OneTimeWorkRequest uploadRequest = new OneTimeWorkRequest.Builder(NsUploaderWorker.class)
+        OneTimeWorkRequest uploadWorkRequest = new OneTimeWorkRequest.Builder(NsUploaderWorker.class)
                 .addTag(NsUploaderWorker.WORKER_TAG)
                 .setInputData(inputData)
                 .build();
+        showUploadProgress(uploadWorkRequest.getId());
 
-        WorkManager.getInstance(context).enqueue(uploadRequest);
+        WorkManager.getInstance(context).enqueue(uploadWorkRequest);
+    }
+
+    private void showUploadProgress(UUID workId)
+    {
+        Context context = getContext();
+        if (context == null) return;
+
+        binding.uploadProgressGroup.setVisibility(View.VISIBLE);
+
+        WorkManager.getInstance(context)
+                .getWorkInfoByIdLiveData(workId)
+                .observe(getViewLifecycleOwner(), new Observer<>()
+                {
+                    private final String innerTag = NetworkSurveyActivity.class.getSimpleName() + "." + NsUploaderWorker.class.getSimpleName();
+
+                    @Override
+                    public void onChanged(WorkInfo workInfo)
+                    {
+                        if (workInfo == null)
+                        {
+                            Timber.tag(innerTag).w("onChanged(): WorkInfo is null");
+                            binding.uploadProgressGroup.setVisibility(View.GONE);
+                            // TODO Display a snackbar, toast, or something else to the user
+                            return;
+                        }
+
+                        int currentPercent = workInfo.getProgress().getInt(NsUploaderWorker.PROGRESS, NsUploaderWorker.PROGRESS_MIN_VALUE);
+                        int maxPercent = workInfo.getProgress().getInt(NsUploaderWorker.PROGRESS_MAX, NsUploaderWorker.PROGRESS_MAX_VALUE);
+                        Timber.tag(innerTag).d("onChanged(): Updating progress: current=%s max=%s", currentPercent, maxPercent);
+                        currentPercent = Math.min(currentPercent, maxPercent);
+                        binding.uploadProgressBar.setProgress(currentPercent);
+
+                        if (workInfo.getState().isFinished())
+                        {
+                            showUploaderFinished(workInfo);
+                        }
+                    }
+                });
+    }
+
+    private void showUploaderFinished(WorkInfo workInfo)
+    {
+        binding.uploadProgressGroup.setVisibility(View.GONE);
+
+        binding.uploadResultsGroup.setVisibility(View.VISIBLE);
+
+        Context context = getContext();
+        if (context == null) return;
+
+        if (workInfo.getState() == WorkInfo.State.CANCELLED)
+        {
+            Toast.makeText(context, R.string.uploader_toast_cancelled, Toast.LENGTH_LONG).show();
+        } else
+        {
+            String ocidResult = workInfo.getOutputData().getString(NsUploaderWorker.OCID_RESULT);
+            binding.opencellidUploadStatus.setText(ocidResult);
+            binding.opencellidUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_tertiary));
+
+            String beaconDbResult = workInfo.getOutputData().getString(NsUploaderWorker.BEACONDB_RESULT);
+            binding.beacondbUploadStatus.setText(beaconDbResult);
+            binding.beacondbUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_error));
+
+            String ocidResultMessage = workInfo.getOutputData().getString(NsUploaderWorker.OCID_RESULT_MESSAGE);
+            if (Strings.isNullOrEmpty(ocidResultMessage))
+            {
+                binding.ocidResultMessage.setVisibility(View.GONE);
+            } else
+            {
+                binding.ocidResultMessage.setVisibility(View.VISIBLE);
+            }
+            binding.ocidResultMessage.setText(ocidResultMessage);
+
+            String beaconDbResultMessage = workInfo.getOutputData().getString(NsUploaderWorker.BEACONDB_RESULT_MESSAGE);
+            if (Strings.isNullOrEmpty(beaconDbResultMessage))
+            {
+                binding.beacondbResultMessage.setVisibility(View.GONE);
+            } else
+            {
+                binding.beacondbResultMessage.setVisibility(View.VISIBLE);
+            }
+            binding.beacondbResultMessage.setText(beaconDbResultMessage);
+        }
+
+        WorkManager.getInstance(context).pruneWork();
     }
 
     /**

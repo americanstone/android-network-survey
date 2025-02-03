@@ -169,6 +169,14 @@ but work independently, so you have full control over how you handle your data.<
     <string name="wifi_upload_queue_count">Wi-Fi:  %1$d</string>
     <string name="upload_button_text">Upload\nRecords</string>
     <string name="upload_survey_records">Upload Survey Records</string>
+    <string name="upload_progress">Upload Progress</string>
+    <string name="upload_percentage_initial">0%</string>
+    <string name="upload_percentage">%1$d%</string>
+    <string name="upload_result">Upload Result</string>
+    <string name="opencellid_upload">OpenCelliD:</string>
+    <string name="beacondb_upload">BeaconDB:</string>
+    <string name="upload_pending">Upload Pending…</string>
+    <string name="uploader_toast_cancelled">Upload cancelled</string>
     <string name="upload_to_opencellid">Upload to OpenCelliD</string>
     <string name="anonymously">Anonymously</string>
     <string name="access_token_warning">You have to enter a valid access token in preferences</string>
@@ -709,11 +717,11 @@ but work independently, so you have full control over how you handle your data.<
     <string name="uploader_dialog_progress_title">Uploading</string>
     <string name="uploader_starting">Starting upload&#8230;</string>
     <string name="uploader_aborting">Aborting upload&#8230;</string>
-    <string name="uploader_already_running">Upload is already running.</string>
+    <string name="uploader_already_running">Upload is already running</string>
     <string name="uploader_disabled">Upload disabled</string>
-    <string name="uploader_disabled_description">Upload disabled for this project.</string>
+    <string name="uploader_disabled_description">Upload disabled for this project</string>
     <string name="uploader_aborted">Upload aborted</string>
-    <string name="uploader_aborted_description">Nothing has been uploaded.</string>
+    <string name="uploader_aborted_description">Nothing has been uploaded</string>
     <string name="uploader_success">Upload successful</string>
     <string name="uploader_success_description">Upload successful. Thanks for your contribution!</string>
     <string name="uploader_partially_succeeded">Partially uploaded</string>
@@ -733,6 +741,9 @@ but work independently, so you have full control over how you handle your data.<
     <string name="uploader_server_error">Server error</string>
     <string name="uploader_server_error_description">The server returned internal error which may mean that it is overloaded, temporarily unavailable or down for maintenance. Please try again later. If you encounter this problem for a long time, please let me know.</string>
     <string name="uploader_limit_exceeded">Usage limit exceeded</string>
+    <string name="permission_denied">Permission denied</string>
+    <string name="permission_uploader_denied_message">Upload cancelled due to denied internet permission.</string>
+    <string name="unknown_error">Unknown error occurred!</string>
     <string name="uploader_limit_exceeded_description">The daily usage limit for the app has been exceeded. Please try again tomorrow.</string>
     <string name="uploader_result_message" translatable="false"><xliff:g id="message">%1$s</xliff:g> | <xliff:g id="description">%2$s</xliff:g></string>
     <string name="uploader_result_description" translatable="false">OCID: <xliff:g id="message_for_ocid">%1$s</xliff:g>\n\nBeaconDB: <xliff:g id="message_for_mls">%2$s</xliff:g></string>

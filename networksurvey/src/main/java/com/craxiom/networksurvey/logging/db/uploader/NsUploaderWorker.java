@@ -46,6 +46,14 @@ public class NsUploaderWorker extends Worker
     public static final String SERVICE_FULL_NAME = NsUploaderWorker.class.getCanonicalName();
     public static final String WORKER_TAG = "NS_UPLOADER_WORKER";
 
+    public static final String PROGRESS = "PROGRESS";
+    public static final String PROGRESS_MAX = "PROGRESS_MAX";
+    public static final int PROGRESS_MIN_VALUE = 0;
+    public static final int PROGRESS_MAX_VALUE = 100;
+    public static final String OCID_RESULT = "OCID_RESULT";
+    public static final String BEACONDB_RESULT = "OCID_RESULT";
+    public static final String OCID_RESULT_MESSAGE = "OCID_RESULT_MESSAGE";
+    public static final String BEACONDB_RESULT_MESSAGE = "BEACONDB_RESULT_MESSAGE";
     public static final int NOTIFICATION_ID = 102;
     private static final int LOCATIONS_PER_PART = 100; // Batch size for uploads
     public static final String OCID_APP_ID = "NetworkSurvey " + BuildConfig.VERSION_NAME;
@@ -85,20 +93,26 @@ public class NsUploaderWorker extends Worker
             anonymousUploadToOcid = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, false);
             isBeaconDBUploadEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, false);
             isRetryEnabled = getInputData().getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, false);
-            // TODO Get the OpenCelliD API key from the input data, or a shared key from the app
 
+            UploadResultBundle uploadResultBundle = new UploadResultBundle();
             int totalRecords = getTotalCellularRecordsForUpload(database.surveyRecordDao());
             if (totalRecords == 0)
             {
                 Timber.d("UploaderWorker: No records to upload.");
-                return Result.success();
+                uploadResultBundle.setResult(UploadTarget.OpenCelliD, UploadResult.NoData);
+                uploadResultBundle.setResult(UploadTarget.BeaconDB, UploadResult.NoData);
+                return Result.success(getResultData(uploadResultBundle));
             }
 
             int partsCount = (int) Math.ceil((double) totalRecords / LOCATIONS_PER_PART);
             for (int i = 0; i < partsCount; i++)
             {
-                boolean success = processUploadBatch(LOCATIONS_PER_PART);
-                if (!success)
+                int progress = (int) (100.0 * i / partsCount);
+                reportProgress(progress, PROGRESS_MAX_VALUE);
+
+                // TODO Keep track using partially uploaded status, and then switch to success at the end
+                uploadResultBundle.merge(processUploadBatch(LOCATIONS_PER_PART));
+                if (!uploadResultBundle.isAllSuccess())
                 {
                     if (isRetryEnabled)
                     {
@@ -107,7 +121,7 @@ public class NsUploaderWorker extends Worker
                     } else
                     {
                         Timber.e("UploaderWorker: Upload failed with no retry.");
-                        return Result.failure();
+                        return Result.failure(getResultData(uploadResultBundle));
                     }
                 }
 
@@ -118,70 +132,78 @@ public class NsUploaderWorker extends Worker
             }
 
             Timber.d("UploaderWorker: Upload process completed.");
-            return Result.success();
+            return Result.success(getResultData(uploadResultBundle));
         } catch (Exception e)
         {
             Timber.e(e, "UploaderWorker: Upload process failed.");
-            return Result.failure();
+            UploadResultBundle uploadResultBundle = new UploadResultBundle();
+            uploadResultBundle.markAllFailure();
+            return Result.failure(getResultData(uploadResultBundle));
         }
     }
 
-    private boolean processUploadBatch(int batchSize)
+    @Override
+    public void onStopped()
     {
-        List<NrRecordEntity> nrRecords = database.surveyRecordDao().getNrRecordsForUpload(batchSize);
-        List<LteRecordEntity> lteRecords = database.surveyRecordDao().getLteRecordsForUpload(batchSize);
-        List<UmtsRecordEntity> umtsRecords = database.surveyRecordDao().getUmtsRecordsForUpload(batchSize);
+        Timber.d("UploaderWorker: Upload cancelled.");
+        notificationManager.cancel(NOTIFICATION_ID);
+        super.onStopped();
+    }
+
+    private UploadResultBundle processUploadBatch(int batchSize)
+    {
         List<GsmRecordEntity> gsmRecords = database.surveyRecordDao().getGsmRecordsForUpload(batchSize);
         List<CdmaRecordEntity> cdmaRecords = database.surveyRecordDao().getCdmaRecordsForUpload(batchSize);
+        List<UmtsRecordEntity> umtsRecords = database.surveyRecordDao().getUmtsRecordsForUpload(batchSize);
+        List<LteRecordEntity> lteRecords = database.surveyRecordDao().getLteRecordsForUpload(batchSize);
+        List<NrRecordEntity> nrRecords = database.surveyRecordDao().getNrRecordsForUpload(batchSize);
 
-        boolean success = true;
+        // Create a combined results bundle
+        UploadResultBundle totalResultBundle = new UploadResultBundle();
 
         if (!nrRecords.isEmpty())
         {
-            success &= processUpload(nrRecords);
+            totalResultBundle.merge(processUpload(nrRecords));
         }
         if (!lteRecords.isEmpty())
         {
-            success &= processUpload(lteRecords);
+            totalResultBundle.merge(processUpload(lteRecords));
         }
         if (!umtsRecords.isEmpty())
         {
-            success &= processUpload(umtsRecords);
+            totalResultBundle.merge(processUpload(umtsRecords));
         }
         if (!cdmaRecords.isEmpty())
         {
-            success &= processUpload(cdmaRecords);
+            totalResultBundle.merge(processUpload(cdmaRecords));
         }
         if (!gsmRecords.isEmpty())
         {
-            success &= processUpload(gsmRecords);
+            totalResultBundle.merge(processUpload(gsmRecords));
         }
 
-        return success;
+        return totalResultBundle;
     }
 
-    private <T> boolean processUpload(List<T> records)
+    private <T> UploadResultBundle processUpload(List<T> records)
     {
-        boolean success = true;
         UploadResultBundle result = uploadRecords(records);
-        Timber.i("UploadResultBundle OCID=%s, BeaconDB=%s", result.getResult(UploadTarget.OpenCelliD), result.getResult(UploadTarget.BeaconDB));
+        Timber.i("UploadResultBundle OCID=%s, BeaconDB=%s",
+                result.getResult(UploadTarget.OpenCelliD),
+                result.getResult(UploadTarget.BeaconDB)
+        );
+
         if (result.getResult(UploadTarget.OpenCelliD) == UploadResult.Success)
         {
             markRecordsAsUploadedToOcid(records);
-        } else
-        {
-            success = false;
         }
 
         if (result.getResult(UploadTarget.BeaconDB) == UploadResult.Success)
         {
             markRecordsAsUploadedToBeaconDb(records);
-        } else
-        {
-            success = false;
         }
 
-        return success;
+        return result;
     }
 
     private <T> UploadResultBundle uploadRecords(List<T> records)
@@ -245,29 +267,6 @@ public class NsUploaderWorker extends Worker
                 uploadResultBundle.markSuccessful(UploadTarget.BeaconDB);
             }
 
-            /*BeaconDbUploadClient beaconDbClient = BeaconDbUploadClient.getInstance();
-            beaconDbClient.uploadToCustomEndpoint("http://172.22.51.71:8080/v2/geosubmit", recordsWrapper)
-                    .enqueue(new retrofit2.Callback<>()
-                    {
-                        @Override
-                        public void onResponse(@NonNull Call<ResponseBody> call, @NonNull retrofit2.Response<ResponseBody> response)
-                        {
-                            if (response.isSuccessful())
-                            {
-                                Timber.i("Upload successful!");
-                            } else
-                            {
-                                Timber.w("Upload failed: %s", response.errorBody());
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t)
-                        {
-                            Timber.e(t, "UploaderWorker: OpenCellID upload failed due to exception.");
-                        }
-                    });*/
-
             return uploadResultBundle;
         } catch (Exception e)
         {
@@ -275,6 +274,34 @@ public class NsUploaderWorker extends Worker
             uploadResultBundle.markAllFailure();
             return uploadResultBundle;
         }
+    }
+
+    private Data getResultData(UploadResultBundle resultBundle)
+    {
+        UploadResult ocidResult = resultBundle.getResult(UploadTarget.OpenCelliD);
+        UploadResult beaconDbResult = resultBundle.getResult(UploadTarget.BeaconDB);
+        Context applicationContext = getApplicationContext();
+
+        return new Data.Builder()
+                .putString(OCID_RESULT, applicationContext.getString(UploadResult.getMessage(ocidResult)))
+                .putString(BEACONDB_RESULT, applicationContext.getString(UploadResult.getMessage(beaconDbResult)))
+                .putString(OCID_RESULT_MESSAGE, applicationContext.getString(ocidResult.getDescription()))
+                .putString(BEACONDB_RESULT_MESSAGE, applicationContext.getString(beaconDbResult.getDescription()))
+                .build();
+    }
+
+    public void reportProgress(int value, int max)
+    {
+        if (isStopped())
+        {
+            return;
+        }
+        setProgressAsync(new Data.Builder()
+                .putInt(PROGRESS, value)
+                .putInt(PROGRESS_MAX, max)
+                .build());
+        Notification notification = notificationHelper.updateNotificationProgress(value, max);
+        notificationManager.notify(NOTIFICATION_ID, notification);
     }
 
     private <T> void markRecordsAsUploadedToOcid(List<T> records)
@@ -337,14 +364,6 @@ public class NsUploaderWorker extends Worker
 
             Timber.d("UploaderWorker: %d records marked as uploaded to BeaconDB.", records.size());
         });
-    }
-
-    @Override
-    public void onStopped()
-    {
-        Timber.d("UploaderWorker: Upload cancelled.");
-        notificationManager.cancel(NOTIFICATION_ID);
-        super.onStopped();
     }
 
     private ForegroundInfo createForegroundInfo(Notification notification)

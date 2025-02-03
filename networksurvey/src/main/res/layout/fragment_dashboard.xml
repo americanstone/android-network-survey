@@ -84,7 +84,7 @@
 
                             <TextView
                                 android:id="@+id/upload_enabled_title"
-                                style="@style/LabelText"
+                                style="@style/SmallTitleText"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/enabled_title" />
@@ -119,7 +119,7 @@
                         <LinearLayout
                             android:id="@+id/upload_control_group"
                             android:layout_width="match_parent"
-                            android:layout_height="match_parent"
+                            android:layout_height="wrap_content"
                             android:orientation="vertical">
 
                             <com.google.android.flexbox.FlexboxLayout
@@ -127,9 +127,7 @@
                                 android:layout_height="wrap_content"
                                 app:alignItems="center"
                                 app:justifyContent="space_between"
-                                app:flexWrap="nowrap"
-                                app:layout_constraintTop_toTopOf="@id/cdr_control_group"
-                                app:layout_constraintBottom_toTopOf="@id/cdr_logging_status_group">
+                                app:flexWrap="nowrap">
 
                                 <LinearLayout
                                     android:layout_width="wrap_content"
@@ -140,7 +138,7 @@
 
                                     <TextView
                                         android:id="@+id/upload_queue_title"
-                                        style="@style/SmallStatusText"
+                                        style="@style/SmallTitleText"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
                                         android:padding="@dimen/x_small_margin"
@@ -213,6 +211,155 @@
                                 </LinearLayout>
 
                             </com.google.android.flexbox.FlexboxLayout>
+
+                            <LinearLayout
+                                android:id="@+id/upload_progress_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:layout_margin="@dimen/small_margin"
+                                android:visibility="gone"
+                                android:orientation="vertical">
+
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="2dp"
+                                    android:layout_marginBottom="@dimen/divider_margin"
+                                    android:background="@color/colorAccentFaded" />
+
+                                <TextView
+                                    android:id="@+id/upload_progress_title"
+                                    style="@style/SmallTitleText"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:padding="@dimen/x_small_margin"
+                                    android:text="@string/upload_progress" />
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="match_parent"
+                                    android:orientation="horizontal"
+                                    android:padding="@dimen/x_small_margin">
+
+                                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                                        android:id="@+id/upload_progress_bar"
+                                        android:layout_width="0dp"
+                                        android:layout_height="wrap_content"
+                                        android:layout_weight="1"
+                                        android:paddingHorizontal="@dimen/small_margin"
+                                        android:layout_gravity="center" />
+
+                                    <TextView
+                                        android:id="@+id/upload_percentage"
+                                        style="@style/SmallTitleText"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:paddingHorizontal="@dimen/small_margin"
+                                        android:text="@string/upload_percentage_initial" />
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/upload_results_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_margin="@dimen/small_margin"
+                                android:visibility="gone"
+                                android:orientation="vertical">
+
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="2dp"
+                                    android:layout_marginBottom="@dimen/divider_margin"
+                                    android:background="@color/colorAccentFaded" />
+
+                                <TextView
+                                    android:id="@+id/upload_result_title"
+                                    style="@style/SmallTitleText"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:padding="@dimen/x_small_margin"
+                                    android:text="@string/upload_result" />
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:layout_marginStart="@dimen/small_margin"
+                                    android:padding="@dimen/x_small_margin">
+
+                                    <!-- OpenCelliD Upload Result -->
+                                    <LinearLayout
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:orientation="horizontal"
+                                        android:gravity="center_vertical">
+
+                                        <TextView
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:text="@string/opencellid_upload"
+                                            style="@style/BrighterSmallStatusText"
+                                            android:layout_marginEnd="8dp" />
+
+                                        <TextView
+                                            android:id="@+id/opencellid_upload_status"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:text="@string/upload_pending"
+                                            style="@style/SmallStatusText"
+                                            android:textColor="@color/md_theme_primary" />
+                                    </LinearLayout>
+
+                                    <TextView
+                                        android:id="@+id/ocid_result_message"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text=""
+                                        android:visibility="gone"
+                                        style="@style/DescriptionText"
+                                        android:layout_marginStart="@dimen/large_margin"
+                                        android:layout_marginTop="4dp" />
+
+                                    <!-- BeaconDB Upload Result -->
+                                    <LinearLayout
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:orientation="horizontal"
+                                        android:gravity="center_vertical"
+                                        android:layout_marginTop="4dp">
+
+                                        <TextView
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:text="@string/beacondb_upload"
+                                            style="@style/BrighterSmallStatusText"
+                                            android:layout_marginEnd="8dp" />
+
+                                        <TextView
+                                            android:id="@+id/beacondb_upload_status"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:text="@string/upload_pending"
+                                            style="@style/SmallStatusText"
+                                            android:textColor="@color/md_theme_primary" />
+                                    </LinearLayout>
+
+                                    <TextView
+                                        android:id="@+id/beacondb_result_message"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text=""
+                                        android:visibility="gone"
+                                        style="@style/DescriptionText"
+                                        android:layout_marginStart="@dimen/large_margin"
+                                        android:layout_marginTop="4dp" />
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
 
                         </LinearLayout>
 
