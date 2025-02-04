@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 
 import com.craxiom.networksurvey.BuildConfig;
 import com.craxiom.networksurvey.logging.db.uploader.RequestResult;
+import com.craxiom.networksurvey.logging.db.uploader.UploadConstants;
 import com.craxiom.networksurvey.logging.db.uploader.UploadResult;
 
 import java.io.IOException;
@@ -44,8 +45,7 @@ public interface OpenCelliDUploadClient
                 .build();
 
         return new Retrofit.Builder()
-                // FIXME Change this back.baseUrl(UploadConstants.OPENCELLID_URL)
-                .baseUrl("http://172.22.51.71:8080/")
+                .baseUrl(UploadConstants.OPENCELLID_URL)
                 .client(client)
                 .build()
                 .create(OpenCelliDUploadClient.class);

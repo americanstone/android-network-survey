@@ -822,6 +822,12 @@ public class PreferenceUtils
 
     public static boolean isUploadEnabled(Context context)
     {
+        boolean externalDataUploadAllowedForMdm = MdmUtils.isExternalDataUploadAllowed(context);
+        if (!externalDataUploadAllowedForMdm)
+        {
+            return false;
+        }
+
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         return sharedPreferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_ENABLED);
     }

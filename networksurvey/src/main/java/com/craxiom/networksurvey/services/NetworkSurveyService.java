@@ -1729,6 +1729,7 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
                 gnssController.onMdmPreferenceChanged();
 
                 deviceStatusCsvLogger.onMdmPreferenceChanged();
+                updateUploadEnabled();
             }
         };
 

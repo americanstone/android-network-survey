@@ -10,6 +10,14 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <TextView
+            android:id="@+id/uploadDialogMessage"
+            style="@style/DescriptionText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="@dimen/x_small_margin"
+            android:text="@string/upload_dialog_message" />
+
         <CheckBox
             android:id="@+id/checkOpenCellId"
             android:layout_width="match_parent"
