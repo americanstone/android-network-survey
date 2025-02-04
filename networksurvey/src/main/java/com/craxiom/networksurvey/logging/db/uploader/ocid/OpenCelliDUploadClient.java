@@ -1,10 +1,12 @@
-package com.craxiom.networksurvey.logging.db.uploader;
+package com.craxiom.networksurvey.logging.db.uploader.ocid;
 
 import static com.google.common.net.HttpHeaders.USER_AGENT;
 
 import androidx.annotation.NonNull;
 
 import com.craxiom.networksurvey.BuildConfig;
+import com.craxiom.networksurvey.logging.db.uploader.RequestResult;
+import com.craxiom.networksurvey.logging.db.uploader.UploadResult;
 
 import java.io.IOException;
 

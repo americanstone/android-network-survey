@@ -1,4 +1,6 @@
-package com.craxiom.networksurvey.logging.db.model;
+package com.craxiom.networksurvey.logging.db.uploader.beacondb;
+
+import com.craxiom.networksurvey.logging.db.model.CellularRecordsWrapper;
 
 import org.json.JSONException;
 import org.json.JSONObject;

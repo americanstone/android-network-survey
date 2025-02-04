@@ -1,7 +1,5 @@
 package com.craxiom.networksurvey.logging.db.uploader;
 
-import static com.craxiom.networksurvey.logging.db.uploader.ocid.OpenCelliDCsvConverterFactory.MEDIA_TYPE_CSV;
-
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -24,12 +22,15 @@ import com.craxiom.networksurvey.logging.db.model.GsmRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.LteRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.NrRecordEntity;
 import com.craxiom.networksurvey.logging.db.model.UmtsRecordEntity;
+import com.craxiom.networksurvey.logging.db.uploader.beacondb.BeaconDbUploadClient;
 import com.craxiom.networksurvey.logging.db.uploader.ocid.OpenCelliDCsvFormatter;
+import com.craxiom.networksurvey.logging.db.uploader.ocid.OpenCelliDUploadClient;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
@@ -45,6 +46,7 @@ public class NsUploaderWorker extends Worker
 {
     public static final String SERVICE_FULL_NAME = NsUploaderWorker.class.getCanonicalName();
     public static final String WORKER_TAG = "NS_UPLOADER_WORKER";
+    public static final MediaType MEDIA_TYPE_CSV = MediaType.parse("text/csv; charset=UTF-8");
 
     public static final String PROGRESS = "PROGRESS";
     public static final String PROGRESS_MAX = "PROGRESS_MAX";
@@ -85,7 +87,7 @@ public class NsUploaderWorker extends Worker
             ForegroundInfo foregroundInfo = createForegroundInfo(notification);
             setForegroundAsync(foregroundInfo);
 
-            Timber.d("UploaderWorker: Starting upload process...");
+            Timber.d("Starting upload process...");
             // TODO Prevent a second trigger of this doWork somehow (Tower Collector uses an application static variable)
 
             // Read work input parameters
@@ -98,7 +100,7 @@ public class NsUploaderWorker extends Worker
             int totalRecords = getTotalCellularRecordsForUpload(database.surveyRecordDao());
             if (totalRecords == 0)
             {
-                Timber.d("UploaderWorker: No records to upload.");
+                Timber.d("No records to upload.");
                 uploadResultBundle.setResult(UploadTarget.OpenCelliD, UploadResult.NoData);
                 uploadResultBundle.setResult(UploadTarget.BeaconDB, UploadResult.NoData);
                 return Result.success(getResultData(uploadResultBundle));
@@ -116,11 +118,11 @@ public class NsUploaderWorker extends Worker
                 {
                     if (isRetryEnabled)
                     {
-                        Timber.d("UploaderWorker: Upload failed, retry enabled.");
+                        Timber.d("Upload failed, retry enabled.");
                         return Result.retry();
                     } else
                     {
-                        Timber.e("UploaderWorker: Upload failed with no retry.");
+                        Timber.e("Upload failed with no retry.");
                         return Result.failure(getResultData(uploadResultBundle));
                     }
                 }
@@ -131,11 +133,11 @@ public class NsUploaderWorker extends Worker
                         .build());
             }
 
-            Timber.d("UploaderWorker: Upload process completed.");
+            Timber.d("Upload process completed.");
             return Result.success(getResultData(uploadResultBundle));
         } catch (Exception e)
         {
-            Timber.e(e, "UploaderWorker: Upload process failed.");
+            Timber.e(e, "Upload process failed.");
             UploadResultBundle uploadResultBundle = new UploadResultBundle();
             uploadResultBundle.markAllFailure();
             return Result.failure(getResultData(uploadResultBundle));
@@ -145,7 +147,7 @@ public class NsUploaderWorker extends Worker
     @Override
     public void onStopped()
     {
-        Timber.d("UploaderWorker: Upload cancelled.");
+        Timber.d("Upload cancelled");
         notificationManager.cancel(NOTIFICATION_ID);
         super.onStopped();
     }
@@ -229,17 +231,17 @@ public class NsUploaderWorker extends Worker
                 {
                     assert body != null;
                     RequestResult requestResult = OpenCelliDUploadClient.handleOcidResponse(response.code(), body);
-                    Timber.d("Upload to OpenCelliD: Server response: %s", requestResult);
+                    Timber.d("Server response: %s", requestResult);
                     UploadResult uploadResult = OpenCelliDUploadClient.mapRequestResultToUploadResult(requestResult);
                     uploadResultBundle.setResult(UploadTarget.OpenCelliD, uploadResult);
                 } catch (Exception e)
                 {
-                    Timber.e(e, "UploaderWorker: OpenCelliD upload failed due to exception.");
+                    Timber.e(e, "OpenCelliD upload failed due to exception.");
                     uploadResultBundle.setResult(UploadTarget.OpenCelliD, UploadResult.Failure);
                 }
             } else
             {
-                Timber.d("UploaderWorker: OpenCelliD upload not enabled.");
+                Timber.d("OpenCelliD upload not enabled.");
                 // When the user does not enable a target, we still need to mark the records as uploaded so they can be deleted
                 uploadResultBundle.markSuccessful(UploadTarget.OpenCelliD);
             }
@@ -257,12 +259,12 @@ public class NsUploaderWorker extends Worker
                     uploadResultBundle.setResult(UploadTarget.BeaconDB, uploadResult);
                 } catch (Exception e)
                 {
-                    Timber.e(e, "UploaderWorker: BeaconDB upload failed due to exception.");
+                    Timber.e(e, "BeaconDB upload failed due to exception.");
                     uploadResultBundle.setResult(UploadTarget.BeaconDB, UploadResult.Failure);
                 }
             } else
             {
-                Timber.d("UploaderWorker: BeaconDB upload not enabled.");
+                Timber.d("BeaconDB upload not enabled.");
                 // When the user does not enable a target, we still need to mark the records as uploaded so they can be deleted
                 uploadResultBundle.markSuccessful(UploadTarget.BeaconDB);
             }
@@ -270,7 +272,7 @@ public class NsUploaderWorker extends Worker
             return uploadResultBundle;
         } catch (Exception e)
         {
-            Timber.e(e, "UploaderWorker: Upload failed due to exception.");
+            Timber.e(e, "Upload failed due to exception.");
             uploadResultBundle.markAllFailure();
             return uploadResultBundle;
         }
@@ -331,7 +333,7 @@ public class NsUploaderWorker extends Worker
                 database.surveyRecordDao().markCdmaRecordsAsUploadedToOcid(recordIds);
             }
 
-            Timber.d("UploaderWorker: %d records marked as uploaded to OCID.", records.size());
+            Timber.d("%d records marked as uploaded to OCID", records.size());
         });
     }
 
@@ -362,7 +364,7 @@ public class NsUploaderWorker extends Worker
                 database.surveyRecordDao().markCdmaRecordsAsUploadedToBeaconDb(recordIds);
             }
 
-            Timber.d("UploaderWorker: %d records marked as uploaded to BeaconDB.", records.size());
+            Timber.d("%d records marked as uploaded to BeaconDB", records.size());
         });
     }
 
@@ -389,4 +391,3 @@ public class NsUploaderWorker extends Worker
                 + surveyRecordDao.getCdmaRecordCountForUpload();
     }
 }
-

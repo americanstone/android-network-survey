@@ -1,4 +1,9 @@
-package com.craxiom.networksurvey.logging.db.model;
+package com.craxiom.networksurvey.logging.db.uploader.beacondb;
+
+import com.craxiom.networksurvey.logging.db.model.GsmRecordEntity;
+import com.craxiom.networksurvey.logging.db.model.LteRecordEntity;
+import com.craxiom.networksurvey.logging.db.model.NrRecordEntity;
+import com.craxiom.networksurvey.logging.db.model.UmtsRecordEntity;
 
 import org.json.JSONArray;
 import org.json.JSONException;

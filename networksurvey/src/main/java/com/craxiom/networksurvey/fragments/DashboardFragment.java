@@ -1186,7 +1186,6 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
             return;
         }
 
-        // TODO Also add the preferences to the settings UI
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         final SharedPreferences.Editor edit = sharedPreferences.edit();
         edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, uploadToOpenCellId);
@@ -1217,6 +1216,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         if (context == null) return;
 
         binding.uploadProgressGroup.setVisibility(View.VISIBLE);
+        binding.uploadProgressBar.setProgress(0);
 
         WorkManager.getInstance(context)
                 .getWorkInfoByIdLiveData(workId)
@@ -1240,6 +1240,8 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
                         Timber.tag(innerTag).d("onChanged(): Updating progress: current=%s max=%s", currentPercent, maxPercent);
                         currentPercent = Math.min(currentPercent, maxPercent);
                         binding.uploadProgressBar.setProgress(currentPercent);
+
+                        // TODO add a status text bar below the progress bar that can be used to update why it is taking a long time e.g. network timeout
 
                         if (workInfo.getState().isFinished())
                         {
