@@ -50,6 +50,7 @@ public class NsUploaderWorker extends Worker
 
     public static final String PROGRESS = "PROGRESS";
     public static final String PROGRESS_MAX = "PROGRESS_MAX";
+    public static final String PROGRESS_STATUS_MESSAGE = "PROGRESS_STATUS_MESSAGE";
     public static final int PROGRESS_MIN_VALUE = 0;
     public static final int PROGRESS_MAX_VALUE = 100;
     public static final String OCID_RESULT = "OCID_RESULT";
@@ -109,8 +110,15 @@ public class NsUploaderWorker extends Worker
             int partsCount = (int) Math.ceil((double) totalRecords / LOCATIONS_PER_PART);
             for (int i = 0; i < partsCount; i++)
             {
+                if (isStopped())
+                {
+                    Timber.d("Upload cancelled");
+                    uploadResultBundle.markAllCancelled();
+                    return Result.failure(getResultData(uploadResultBundle));
+                }
+
                 int progress = (int) (100.0 * i / partsCount);
-                reportProgress(progress, PROGRESS_MAX_VALUE);
+                reportProgress(progress, PROGRESS_MAX_VALUE, "Uploading records...");
 
                 // TODO Keep track using partially uploaded status, and then switch to success at the end
                 uploadResultBundle.merge(processUploadBatch(LOCATIONS_PER_PART));
@@ -119,6 +127,7 @@ public class NsUploaderWorker extends Worker
                     if (isRetryEnabled)
                     {
                         Timber.d("Upload failed, retry enabled.");
+                        reportProgress(progress, PROGRESS_MAX_VALUE, "An error occurred, will retry later");
                         return Result.retry();
                     } else
                     {
@@ -128,9 +137,7 @@ public class NsUploaderWorker extends Worker
                 }
 
                 // Progress update
-                setProgressAsync(new Data.Builder()
-                        .putInt("PROGRESS", (i + 1) * 100 / partsCount)
-                        .build());
+                reportProgress((i + 1) * 100 / partsCount, PROGRESS_MAX_VALUE, "Uploading records...");
             }
 
             Timber.d("Upload process completed.");
@@ -292,7 +299,7 @@ public class NsUploaderWorker extends Worker
                 .build();
     }
 
-    public void reportProgress(int value, int max)
+    public void reportProgress(int value, int max, String message)
     {
         if (isStopped())
         {
@@ -301,6 +308,7 @@ public class NsUploaderWorker extends Worker
         setProgressAsync(new Data.Builder()
                 .putInt(PROGRESS, value)
                 .putInt(PROGRESS_MAX, max)
+                .putString(PROGRESS_STATUS_MESSAGE, message)
                 .build());
         Notification notification = notificationHelper.updateNotificationProgress(value, max);
         notificationManager.notify(NOTIFICATION_ID, notification);

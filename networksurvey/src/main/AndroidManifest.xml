@@ -100,8 +100,8 @@
 
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <meta-data
             android:name="android.content.APP_RESTRICTIONS"

@@ -57,6 +57,14 @@ public class UploadResultBundle
         }
     }
 
+    public void markAllCancelled()
+    {
+        for (UploadTarget target : UploadTarget.values())
+        {
+            results.put(target, UploadResult.Cancelled);
+        }
+    }
+
     public void merge(UploadResultBundle other)
     {
         for (UploadTarget target : UploadTarget.values())

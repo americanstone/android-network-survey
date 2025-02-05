@@ -1235,13 +1235,27 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
                             return;
                         }
 
-                        int currentPercent = workInfo.getProgress().getInt(NsUploaderWorker.PROGRESS, NsUploaderWorker.PROGRESS_MIN_VALUE);
-                        int maxPercent = workInfo.getProgress().getInt(NsUploaderWorker.PROGRESS_MAX, NsUploaderWorker.PROGRESS_MAX_VALUE);
+                        Data progress = workInfo.getProgress();
+                        int currentPercent = progress.getInt(NsUploaderWorker.PROGRESS, NsUploaderWorker.PROGRESS_MIN_VALUE);
+                        int maxPercent = progress.getInt(NsUploaderWorker.PROGRESS_MAX, NsUploaderWorker.PROGRESS_MAX_VALUE);
+                        String statusMessage = progress.getString(NsUploaderWorker.PROGRESS_STATUS_MESSAGE);
                         Timber.tag(innerTag).d("onChanged(): Updating progress: current=%s max=%s", currentPercent, maxPercent);
                         currentPercent = Math.min(currentPercent, maxPercent);
                         binding.uploadProgressBar.setProgress(currentPercent);
+                        binding.uploadPercentage.setText(getString(R.string.upload_percentage, currentPercent));
 
-                        // TODO add a status text bar below the progress bar that can be used to update why it is taking a long time e.g. network timeout
+                        if (!Strings.isNullOrEmpty(statusMessage) || workInfo.getState() == WorkInfo.State.ENQUEUED)
+                        {
+                            if (workInfo.getState() == WorkInfo.State.ENQUEUED)
+                            {
+                                statusMessage = getString(R.string.uploader_enqueued);
+                            }
+                            binding.uploadProgressStatus.setVisibility(View.VISIBLE);
+                            binding.uploadProgressStatus.setText(statusMessage);
+                        } else
+                        {
+                            binding.uploadProgressStatus.setVisibility(View.GONE);
+                        }
 
                         if (workInfo.getState().isFinished())
                         {
