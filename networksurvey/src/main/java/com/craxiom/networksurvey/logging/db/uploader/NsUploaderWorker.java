@@ -112,7 +112,7 @@ public class NsUploaderWorker extends Worker
             {
                 if (isStopped())
                 {
-                    Timber.d("Upload cancelled");
+                    Timber.d("Upload cancelled, stopping upload processing loop");
                     uploadResultBundle.markAllCancelled();
                     return Result.failure(getResultData(uploadResultBundle));
                 }
@@ -154,7 +154,7 @@ public class NsUploaderWorker extends Worker
     @Override
     public void onStopped()
     {
-        Timber.d("Upload cancelled");
+        Timber.d("onStopped: Upload cancelled");
         notificationManager.cancel(NOTIFICATION_ID);
         super.onStopped();
     }

@@ -65,7 +65,7 @@ public class UploaderNotificationHelper
         builder.setTicker(notificationText);
         // set action
         PendingIntent cancelUploaderIntent = createCancelUploaderIntent();
-        NotificationCompat.Action stopAction = new NotificationCompat.Action.Builder(R.drawable.menu_stop, context.getString(R.string.dialog_cancel), cancelUploaderIntent).build();
+        NotificationCompat.Action stopAction = new NotificationCompat.Action.Builder(R.drawable.menu_stop, context.getString(R.string.cancel), cancelUploaderIntent).build();
         builder.addAction(stopAction);
         return builder.build();
     }

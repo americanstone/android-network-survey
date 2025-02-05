@@ -135,6 +135,8 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         // instead of recalling the initialize view method each time the fragment is resumed.
         initializeLocationTextView();
 
+        observeUploadWork();
+
         startAndBindToService();
 
         handler.post(updateUploadCountsRunnable);
@@ -259,6 +261,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         initializeLoggingSwitch(binding.uploadEnabledToggleSwitch, (newEnabledState, toggleSwitch) -> viewModel.setUploadEnabled(newEnabledState));
 
         binding.uploadButton.setOnClickListener(v -> showUploadDialog());
+        binding.uploadCancelButton.setOnClickListener(v -> cancelUploads());
 
         initializeLoggingSwitch(binding.cellularLoggingToggleSwitch, (newEnabledState, toggleSwitch) -> {
             viewModel.setCellularLoggingEnabled(newEnabledState);
@@ -397,6 +400,12 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
 
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+    private void cancelUploads()
+    {
+        WorkManager workManager = WorkManager.getInstance(requireContext());
+        workManager.cancelAllWorkByTag(NsUploaderWorker.WORKER_TAG);
     }
 
     private void updateOcidKeyWarningMessage(boolean uploadToOcid, boolean anonymousOcidUpload, TextView accessTokenWarningMessage, Context context)
@@ -666,7 +675,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         viewModel.getProviderEnabled().observe(viewLifecycleOwner, this::updateLocationProviderStatus);
         viewModel.getLocation().observe(viewLifecycleOwner, this::updateLocationTextView);
 
-        viewModel.getUploadEnabled().observe(viewLifecycleOwner, this::updateUploadUi);
+        viewModel.getUploadEnabled().observe(viewLifecycleOwner, this::updateUploadEnabledUi);
 
         viewModel.getCellularLoggingEnabled().observe(viewLifecycleOwner, this::updateCellularLogging);
         viewModel.getWifiLoggingEnabled().observe(viewLifecycleOwner, this::updateWifiLogging);
@@ -1122,7 +1131,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     /**
      * Update the upload card UI so that it reflects the new enabled state.
      */
-    private void updateUploadUi(boolean enabled)
+    private void updateUploadEnabledUi(boolean enabled)
     {
         final Context context = getContext();
         if (context == null) return;
@@ -1165,6 +1174,49 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     private void updateWifiUploadQueueCountUI(int count)
     {
         binding.wifiUploadQueueCount.setText(getString(R.string.wifi_upload_queue_count, count));
+    }
+
+    /**
+     * Observes all upload tasks associated with the specific work tag.
+     * Updates UI when an upload is active, ongoing, or finishes.
+     * Logs an error if multiple upload tasks are found (should only be one).
+     */
+    private void observeUploadWork()
+    {
+        Context context = getContext();
+        if (context == null) return;
+
+        WorkManager.getInstance(context)
+                .getWorkInfosByTagLiveData(NsUploaderWorker.WORKER_TAG)
+                .observe(getViewLifecycleOwner(), workInfos -> {
+                    Timber.d("observeUploadWork(): Found %s work tasks with the tag: %s", workInfos.size(), NsUploaderWorker.WORKER_TAG);
+
+                    if (workInfos.size() > 1)
+                    {
+                        Timber.e("observeUploadWork(): Multiple active upload tasks found! Expected only one.");
+                    }
+
+                    boolean hasActiveUpload = false;
+                    UUID activeWorkId = null;
+
+                    for (WorkInfo workInfo : workInfos)
+                    {
+                        if (workInfo.getState() == WorkInfo.State.ENQUEUED || workInfo.getState() == WorkInfo.State.RUNNING)
+                        {
+                            hasActiveUpload = true;
+                            activeWorkId = workInfo.getId();
+                            break; // Stop iterating after finding one active upload
+                        }
+                    }
+
+                    if (hasActiveUpload)
+                    {
+                        showUploadProgress(activeWorkId); // Update UI for the active task
+                    } else
+                    {
+                        binding.uploadProgressGroup.setVisibility(View.GONE);
+                    }
+                });
     }
 
     /**

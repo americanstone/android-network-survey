@@ -213,6 +213,7 @@
 
                             </com.google.android.flexbox.FlexboxLayout>
 
+                            <!-- Upload Progress -->
                             <LinearLayout
                                 android:id="@+id/upload_progress_group"
                                 android:layout_width="match_parent"
@@ -257,6 +258,17 @@
                                         android:paddingHorizontal="@dimen/small_margin"
                                         android:text="@string/upload_percentage_initial" />
 
+                                    <ImageButton
+                                        android:id="@+id/upload_cancel_button"
+                                        android:layout_width="26dp"
+                                        android:layout_height="26dp"
+                                        android:cropToPadding="true"
+                                        android:padding="5dp"
+                                        android:layout_gravity="center"
+                                        android:src="@drawable/ic_cancel"
+                                        android:background="@drawable/rounded_corner"
+                                        android:contentDescription="@string/cancel" />
+
                                 </LinearLayout>
 
                                 <TextView
@@ -271,6 +283,7 @@
 
                             </LinearLayout>
 
+                            <!-- Upload Results -->
                             <LinearLayout
                                 android:id="@+id/upload_results_group"
                                 android:layout_width="match_parent"

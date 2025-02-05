@@ -755,7 +755,7 @@ but work independently, so you have full control over how you handle your data.<
     <string name="uploader_result_description" translatable="false">OCID: <xliff:g id="message_for_ocid">%1$s</xliff:g>\n\nBeaconDB: <xliff:g id="message_for_mls">%2$s</xliff:g></string>
     <string name="uploader_no_internet_title">Internet unavailable</string>
     <string name="uploader_no_internet_message">Cannot upload due to no Internet connection.</string>
-    <string name="dialog_cancel">Cancel</string>
+    <string name="cancel">Cancel</string>
     <string name="preferences">Preferences</string>
     <string name="uploader_enqueued">An error occurred, will retry later</string>
 </resources>
