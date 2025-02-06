@@ -350,114 +350,6 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     }
 
     /**
-     * Display the upload dialog to the user, and then handle the upload based on the user's choices.
-     */
-    private void showUploadDialog()
-    {
-        final Context context = getContext();
-        if (context == null) return;
-
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean prefUploadToOpenCellId = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
-        boolean prefAnonymously = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
-        boolean prefUploadToBeaconDb = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_BEACONDB);
-        boolean prefRetryUpload = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_RETRY_ENABLED);
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_upload, null);
-        builder.setView(dialogView);
-
-        CheckBox ocidUploadCheckbox = dialogView.findViewById(R.id.checkOpenCellId);
-        CheckBox anonymousOcidUploadCheckbox = dialogView.findViewById(R.id.checkAnonymously);
-        TextView accessTokenWarningMessage = dialogView.findViewById(R.id.accessTokenWarningMessage);
-        CheckBox beaconDbUploadCheckbox = dialogView.findViewById(R.id.checkBeaconDB);
-        CheckBox retryUploadCheckbox = dialogView.findViewById(R.id.checkRetry);
-
-        ocidUploadCheckbox.setOnCheckedChangeListener((buttonView, uploadToOcid) -> {
-            anonymousOcidUploadCheckbox.setEnabled(uploadToOcid);
-            updateOcidKeyWarningMessage(uploadToOcid, anonymousOcidUploadCheckbox.isChecked(), accessTokenWarningMessage, context);
-        });
-
-        anonymousOcidUploadCheckbox.setOnCheckedChangeListener((buttonView, anonymousOcidUpload) ->
-                updateOcidKeyWarningMessage(ocidUploadCheckbox.isChecked(), anonymousOcidUpload, accessTokenWarningMessage, context));
-
-        ocidUploadCheckbox.setChecked(prefUploadToOpenCellId);
-        anonymousOcidUploadCheckbox.setChecked(prefAnonymously);
-        beaconDbUploadCheckbox.setChecked(prefUploadToBeaconDb);
-        retryUploadCheckbox.setChecked(prefRetryUpload);
-
-        builder.setTitle(getString(R.string.upload_survey_records))
-                .setPositiveButton("Upload", (dialog, which) -> {
-                    boolean uploadToOpenCellId = ocidUploadCheckbox.isChecked();
-                    boolean anonymously = anonymousOcidUploadCheckbox.isChecked();
-                    boolean uploadToBeaconDB = beaconDbUploadCheckbox.isChecked();
-                    boolean enableRetry = retryUploadCheckbox.isChecked();
-
-                    startUploadWorker(uploadToOpenCellId, anonymously, uploadToBeaconDB, enableRetry);
-                })
-                .setNeutralButton(R.string.preferences, (dialog, which) -> navigateToUploadSettings())
-                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
-
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    private void cancelUploads()
-    {
-        WorkManager workManager = WorkManager.getInstance(requireContext());
-        workManager.cancelAllWorkByTag(NsUploaderWorker.WORKER_TAG);
-    }
-
-    private void updateOcidKeyWarningMessage(boolean uploadToOcid, boolean anonymousOcidUpload, TextView accessTokenWarningMessage, Context context)
-    {
-        if (uploadToOcid && !anonymousOcidUpload)
-        {
-            String userOcidApiKey = PreferenceUtils.getUserOcidApiKey(context);
-            if (!PreferenceUtils.isApiKeyValid(userOcidApiKey))
-            {
-                accessTokenWarningMessage.setVisibility(View.VISIBLE);
-            }
-        } else
-        {
-            accessTokenWarningMessage.setVisibility(View.GONE);
-        }
-    }
-
-    private void navigateToMqttFragment()
-    {
-        try
-        {
-            FragmentActivity activity = getActivity();
-            if (activity == null) return;
-
-            SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-            viewModel.triggerNavigationToMqttConnection();
-        } catch (Exception e)
-        {
-            // It is possible that the user has tried to connect, the snackbar message is displayed,
-            // and then they navigated away from the dashboard fragment and then clicked on the
-            // snackbar "Open" button. In this case we will get an IllegalStateException.
-            Timber.e(e, "Could not navigate to the MQTT Connection fragment");
-        }
-    }
-
-    private void navigateToUploadSettings()
-    {
-        try
-        {
-            FragmentActivity activity = getActivity();
-            if (activity == null) return;
-
-            SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-            viewModel.triggerNavigationToUploadSettings();
-        } catch (Exception e)
-        {
-            Timber.e(e, "Could not navigate to the Upload Preferences fragment");
-        }
-    }
-
-    /**
      * @return True if any of the permissions have been denied. False if all the permissions
      * have been granted.
      */
@@ -1177,6 +1069,114 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         binding.wifiUploadQueueCount.setText(getString(R.string.wifi_upload_queue_count, count));
     }
 
+    private void navigateToMqttFragment()
+    {
+        try
+        {
+            FragmentActivity activity = getActivity();
+            if (activity == null) return;
+
+            SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+            viewModel.triggerNavigationToMqttConnection();
+        } catch (Exception e)
+        {
+            // It is possible that the user has tried to connect, the snackbar message is displayed,
+            // and then they navigated away from the dashboard fragment and then clicked on the
+            // snackbar "Open" button. In this case we will get an IllegalStateException.
+            Timber.e(e, "Could not navigate to the MQTT Connection fragment");
+        }
+    }
+
+    private void navigateToUploadSettings()
+    {
+        try
+        {
+            FragmentActivity activity = getActivity();
+            if (activity == null) return;
+
+            SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+            viewModel.triggerNavigationToUploadSettings();
+        } catch (Exception e)
+        {
+            Timber.e(e, "Could not navigate to the Upload Preferences fragment");
+        }
+    }
+
+    /**
+     * Display the upload dialog to the user, and then handle the upload based on the user's choices.
+     */
+    private void showUploadDialog()
+    {
+        final Context context = getContext();
+        if (context == null) return;
+
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean prefUploadToOpenCellId = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
+        boolean prefAnonymously = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
+        boolean prefUploadToBeaconDb = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_BEACONDB);
+        boolean prefRetryUpload = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_RETRY_ENABLED);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_upload, null);
+        builder.setView(dialogView);
+
+        CheckBox ocidUploadCheckbox = dialogView.findViewById(R.id.checkOpenCellId);
+        CheckBox anonymousOcidUploadCheckbox = dialogView.findViewById(R.id.checkAnonymously);
+        TextView accessTokenWarningMessage = dialogView.findViewById(R.id.accessTokenWarningMessage);
+        CheckBox beaconDbUploadCheckbox = dialogView.findViewById(R.id.checkBeaconDB);
+        CheckBox retryUploadCheckbox = dialogView.findViewById(R.id.checkRetry);
+
+        ocidUploadCheckbox.setOnCheckedChangeListener((buttonView, uploadToOcid) -> {
+            anonymousOcidUploadCheckbox.setEnabled(uploadToOcid);
+            updateOcidKeyWarningMessage(uploadToOcid, anonymousOcidUploadCheckbox.isChecked(), accessTokenWarningMessage, context);
+        });
+
+        anonymousOcidUploadCheckbox.setOnCheckedChangeListener((buttonView, anonymousOcidUpload) ->
+                updateOcidKeyWarningMessage(ocidUploadCheckbox.isChecked(), anonymousOcidUpload, accessTokenWarningMessage, context));
+
+        ocidUploadCheckbox.setChecked(prefUploadToOpenCellId);
+        anonymousOcidUploadCheckbox.setChecked(prefAnonymously);
+        beaconDbUploadCheckbox.setChecked(prefUploadToBeaconDb);
+        retryUploadCheckbox.setChecked(prefRetryUpload);
+
+        builder.setTitle(getString(R.string.upload_survey_records))
+                .setPositiveButton("Upload", (dialog, which) -> {
+                    boolean uploadToOpenCellId = ocidUploadCheckbox.isChecked();
+                    boolean anonymously = anonymousOcidUploadCheckbox.isChecked();
+                    boolean uploadToBeaconDB = beaconDbUploadCheckbox.isChecked();
+                    boolean enableRetry = retryUploadCheckbox.isChecked();
+
+                    startUploadWorker(uploadToOpenCellId, anonymously, uploadToBeaconDB, enableRetry);
+                })
+                .setNeutralButton(R.string.preferences, (dialog, which) -> navigateToUploadSettings())
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+    private void cancelUploads()
+    {
+        WorkManager workManager = WorkManager.getInstance(requireContext());
+        workManager.cancelAllWorkByTag(NsUploaderWorker.WORKER_TAG);
+    }
+
+    private void updateOcidKeyWarningMessage(boolean uploadToOcid, boolean anonymousOcidUpload, TextView accessTokenWarningMessage, Context context)
+    {
+        if (uploadToOcid && !anonymousOcidUpload)
+        {
+            String userOcidApiKey = PreferenceUtils.getUserOcidApiKey(context);
+            if (!PreferenceUtils.isApiKeyValid(userOcidApiKey))
+            {
+                accessTokenWarningMessage.setVisibility(View.VISIBLE);
+            }
+        } else
+        {
+            accessTokenWarningMessage.setVisibility(View.GONE);
+        }
+    }
+
     /**
      * Observes all upload tasks associated with the specific work tag.
      * Updates UI when an upload is active, ongoing, or finishes.
@@ -1330,7 +1330,12 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
 
         if (workInfo.getState() == WorkInfo.State.CANCELLED)
         {
-            Toast.makeText(context, R.string.uploader_toast_cancelled, Toast.LENGTH_LONG).show();
+            Toast.makeText(context, R.string.uploader_canceled, Toast.LENGTH_LONG).show();
+            binding.opencellidUploadStatus.setText(R.string.uploader_canceled);
+            binding.opencellidUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_error));
+
+            binding.beacondbUploadStatus.setText(R.string.uploader_canceled);
+            binding.beacondbUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_error));
         } else
         {
             String ocidResult = workInfo.getOutputData().getString(NsUploaderWorker.OCID_RESULT);
