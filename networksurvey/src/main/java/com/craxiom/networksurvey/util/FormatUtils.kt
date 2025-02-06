@@ -117,6 +117,21 @@ object FormatUtils {
         )
     }
 
+    /**
+     * This function prevents really small speed values from being displayed in scientific notation
+     * when converted to a string (for JSON serialization). If the speed is less than 0.1, then
+     * the speed is set to 0.
+     */
+    @JvmStatic
+    fun formatSpeed(speed: Float): Float {
+        // If less then 0.1 then don't set the value
+        return if (speed < 0.1) {
+            0f
+        } else {
+            speed
+        }
+    }
+
     fun formatSpeedAccuracy(
         context: Context,
         location: Location
@@ -171,7 +186,7 @@ object FormatUtils {
             meta.numSignalsInView
         ) +
                 if (meta.supportedGnssCfs.isNotEmpty())
-                    " (" + IOUtils.trimEnds(meta.supportedGnssCfs.sorted().toString()) + ")"
+                    " (" + NsUtils.trimEnds(meta.supportedGnssCfs.sorted().toString()) + ")"
                 else ""
     }
 
@@ -283,15 +298,15 @@ object FormatUtils {
                 "${phaseCenterOffset.xOffsetUncertaintyMm.toLog()},${phaseCenterOffset.yOffsetMm.toLog()}," +
                 "${phaseCenterOffset.yOffsetUncertaintyMm.toLog()},${phaseCenterOffset.zOffsetMm.toLog()}," +
                 "${phaseCenterOffset.zOffsetUncertaintyMm.toLog()},${
-                    IOUtils.serialize(
+                    NsUtils.serialize(
                         phaseCenterVariationCorrections!!.correctionsArray
                     )
-                },${IOUtils.serialize(phaseCenterVariationCorrections!!.correctionUncertaintiesArray)}," +
+                },${NsUtils.serialize(phaseCenterVariationCorrections!!.correctionUncertaintiesArray)}," +
                 "${phaseCenterVariationCorrections!!.deltaPhi.toLog()},${phaseCenterVariationCorrections!!.deltaTheta.toLog()},${
-                    IOUtils.serialize(
+                    NsUtils.serialize(
                         signalGainCorrections!!.correctionsArray
                     )
-                },${IOUtils.serialize(signalGainCorrections!!.correctionUncertaintiesArray)}," +
+                },${NsUtils.serialize(signalGainCorrections!!.correctionUncertaintiesArray)}," +
                 "${signalGainCorrections!!.deltaPhi.toLog()},${signalGainCorrections!!.deltaTheta.toLog()}"
     }
 

@@ -32,7 +32,7 @@ import timber.log.Timber;
 /**
  * Holds application-wide state.
  * <p>
- * TODO: This class was pulled from the GPS Test app and needs to be removed once all the usages of this class are updated/removed
+ * This class was pulled from the GPS Test app
  *
  * @author Sean J. Barbeau
  */

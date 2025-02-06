@@ -49,9 +49,9 @@ import com.craxiom.networksurvey.ui.gnss.data.FixState
 import com.craxiom.networksurvey.ui.gnss.data.LocationRepository
 import com.craxiom.networksurvey.ui.gnss.model.SatelliteMetadata
 import com.craxiom.networksurvey.ui.gnss.model.SignalInfoViewModel
+import com.craxiom.networksurvey.ui.theme.NsTheme
 import com.craxiom.networksurvey.util.LibUIUtils
 import com.craxiom.networksurvey.util.MathUtils
-import com.craxiom.networksurvey.util.NsTheme
 import com.craxiom.networksurvey.util.PreferenceUtils.clearGnssFilter
 import com.craxiom.networksurvey.util.PreferenceUtils.gnssFilter
 import dagger.hilt.android.AndroidEntryPoint

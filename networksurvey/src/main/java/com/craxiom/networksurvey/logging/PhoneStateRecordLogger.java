@@ -11,26 +11,33 @@ import static com.craxiom.networksurvey.constants.MessageConstants.ACCURACY;
 import static com.craxiom.networksurvey.constants.MessageConstants.MISSION_ID_COLUMN;
 import static com.craxiom.networksurvey.constants.MessageConstants.RECORD_NUMBER_COLUMN;
 import static com.craxiom.networksurvey.constants.MessageConstants.TIME_COLUMN;
+import static com.craxiom.networksurvey.constants.csv.PhoneStateCsvConstants.NON_TERRESTRIAL_NETWORK;
+import static com.craxiom.networksurvey.constants.csv.PhoneStateCsvConstants.SLOT;
 
 import android.os.Looper;
 
 import com.craxiom.messaging.DeviceStatus;
+import com.craxiom.messaging.NetworkRegistrationInfo;
 import com.craxiom.messaging.PhoneState;
 import com.craxiom.messaging.PhoneStateData;
 import com.craxiom.messaging.phonestate.SimState;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
+import com.craxiom.networksurvey.constants.csv.PhoneStateCsvConstants;
 import com.craxiom.networksurvey.listeners.IDeviceStatusListener;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
-import com.craxiom.networksurvey.util.IOUtils;
 import com.craxiom.networksurvey.util.MathUtils;
+import com.craxiom.networksurvey.util.NsUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
-import com.google.gson.Gson;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import mil.nga.geopackage.GeoPackage;
 import mil.nga.geopackage.db.GeoPackageDataType;
@@ -49,11 +56,15 @@ import timber.log.Timber;
  */
 public class PhoneStateRecordLogger extends SurveyRecordLogger implements IDeviceStatusListener
 {
+    private final JsonFormat.Printer jsonFormatter;
+
     public PhoneStateRecordLogger(NetworkSurveyService networkSurveyService, Looper serviceLooper)
     {
         super(networkSurveyService, serviceLooper,
                 NetworkSurveyConstants.LOG_DIRECTORY_NAME,
                 NetworkSurveyConstants.PHONESTATE_FILE_NAME_PREFIX);
+
+        jsonFormatter = JsonFormat.printer().preservingProtoFieldNames().omittingInsignificantWhitespace();
     }
 
     @Override
@@ -65,6 +76,8 @@ public class PhoneStateRecordLogger extends SurveyRecordLogger implements IDevic
             tableColumns.add(FeatureColumn.createColumn(columnNumber++, ALTITUDE_COLUMN, GeoPackageDataType.FLOAT, false, null));
             tableColumns.add(FeatureColumn.createColumn(columnNumber++, SIM_STATE_COLUMN, GeoPackageDataType.TEXT, false, null));
             tableColumns.add(FeatureColumn.createColumn(columnNumber++, SIM_OPERATOR_COLUMN, GeoPackageDataType.TEXT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, SLOT, GeoPackageDataType.SMALLINT, false, null));
+            tableColumns.add(FeatureColumn.createColumn(columnNumber++, NON_TERRESTRIAL_NETWORK, GeoPackageDataType.BOOLEAN, false, null));
             //noinspection UnusedAssignment
             tableColumns.add(FeatureColumn.createColumn(columnNumber++, NETWORK_REGISTRATION_COLUMN, GeoPackageDataType.TEXT, false, null));
         });
@@ -97,15 +110,39 @@ public class PhoneStateRecordLogger extends SurveyRecordLogger implements IDevic
                         row.setValue(LONGITUDE_COLUMN, data.getLongitude());
                         row.setValue(ALTITUDE_COLUMN, data.getAltitude());
 
-                        row.setValue(TIME_COLUMN, IOUtils.getEpochFromRfc3339(data.getDeviceTime()));
+                        row.setValue(PhoneStateCsvConstants.DEVICE_SERIAL_NUMBER, data.getDeviceSerialNumber());
+                        row.setValue(TIME_COLUMN, NsUtils.getEpochFromRfc3339(data.getDeviceTime()));
                         row.setValue(MISSION_ID_COLUMN, data.getMissionId());
                         row.setValue(RECORD_NUMBER_COLUMN, data.getRecordNumber());
+                        row.setValue(PhoneStateCsvConstants.SPEED, data.getSpeed());
                         row.setValue(ACCURACY, MathUtils.roundAccuracy(data.getAccuracy()));
 
                         row.setValue(SIM_STATE_COLUMN, readSimState(data));
                         row.setValue(SIM_OPERATOR_COLUMN, data.getSimOperator());
+                        if (data.hasSlot())
+                        {
+                            row.setValue(SLOT, data.getSlot().getValue());
+                        }
 
-                        String networkRegistrationJson = new Gson().toJson(data.getNetworkRegistrationInfoList());
+                        if (data.hasNonTerrestrialNetwork())
+                        {
+                            row.setValue(NON_TERRESTRIAL_NETWORK, data.getNonTerrestrialNetwork().getValue());
+                        }
+
+                        List<String> jsonList = new ArrayList<>();
+                        for (NetworkRegistrationInfo info : data.getNetworkRegistrationInfoList())
+                        {
+                            String jsonMessage = null;
+                            try
+                            {
+                                jsonMessage = jsonFormatter.print(info);
+                            } catch (InvalidProtocolBufferException e)
+                            {
+                                Timber.wtf(e, "Could not convert the NetworkRegistrationInfo to a JSON string, this should never happen");
+                            }
+                            jsonList.add(jsonMessage);
+                        }
+                        String networkRegistrationJson = jsonList.toString();
                         row.setValue(NETWORK_REGISTRATION_COLUMN, networkRegistrationJson);
 
                         featureDao.insert(row);

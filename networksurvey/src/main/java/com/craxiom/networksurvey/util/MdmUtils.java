@@ -7,6 +7,7 @@ import android.os.Bundle;
 import androidx.preference.PreferenceManager;
 
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
+import com.craxiom.networksurvey.fragments.SettingsFragment;
 
 /**
  * Utilities for MDM properties.
@@ -65,5 +66,24 @@ public class MdmUtils
         }
 
         return false;
+    }
+
+    /**
+     * @return True, if the the MDM configuration allows external data uploads or if this device
+     * is not under MDM control, false otherwise.
+     */
+    public static boolean isExternalDataUploadAllowed(Context context)
+    {
+        if (isUnderMdmControl(context, SettingsFragment.MDM_OVERLAP_PROPERTY_KEYS))
+        {
+            final RestrictionsManager restrictionsManager = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
+            if (restrictionsManager != null)
+            {
+                final Bundle mdmProperties = restrictionsManager.getApplicationRestrictions();
+                return mdmProperties.getBoolean(NetworkSurveyConstants.MDM_PROPERTY_ALLOW_EXTERNAL_DATA_UPLOAD, false);
+            }
+        }
+
+        return true;
     }
 }

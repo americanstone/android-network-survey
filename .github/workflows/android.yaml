@@ -13,6 +13,7 @@ on:
 
 jobs:
   build:
+    if: "! startsWith(github.event.head_commit.message, 'Bump version to')"
     runs-on: ubuntu-latest
 
     steps:
@@ -20,11 +21,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: 17
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: Build CDR APK
+        env:
+          NS_API_KEY: ${{ secrets.NS_API_KEY }}
+          OCID_API_KEY: ${{ secrets.OCID_API_KEY }}
+        run: ./gradlew assembleCdrDebug
+          -PnsApiKey=$NS_API_KEY
+          -PocidApiKey=$OCID_API_KEY
+
+      - name: Get APK name
+        run: echo "base_name=`./gradlew :networksurvey:properties -q | grep 'archivesBaseName:' | awk '{print $2}'`" >> $GITHUB_ENV
+
+      - name: Upload CDR APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Network Survey CDR Debug APK
+          path: networksurvey/build/outputs/apk/cdr/debug/${{ env.base_name }}-cdr-debug.apk
 
       - name: Save google-services.json
         env:
@@ -34,35 +52,26 @@ jobs:
       - name: Build Regular APK
         env:
           NS_API_KEY: ${{ secrets.NS_API_KEY }}
+          OCID_API_KEY: ${{ secrets.OCID_API_KEY }}
         run: ./gradlew assembleRegularDebug
           -PnsApiKey=$NS_API_KEY
-
-      - name: Get APK name
-        run: echo "base_name=`./gradlew :networksurvey:properties -q | grep 'archivesBaseName:' | awk '{print $2}'`" >> $GITHUB_ENV
+          -PocidApiKey=$OCID_API_KEY
 
       - name: Upload Regular APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Network Survey Regular Debug APK
           path: networksurvey/build/outputs/apk/regular/debug/${{ env.base_name }}-regular-debug.apk
 
-      - name: Build CDR APK
-        run: ./gradlew assembleCdrDebug --stacktrace
-
-      - name: Upload CDR APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: Network Survey CDR Debug APK
-          path: networksurvey/build/outputs/apk/cdr/debug/${{ env.base_name }}-cdr-debug.apk
-
 
   test:
+    if: "! startsWith(github.event.head_commit.message, 'Bump version to')"
     name: Run Tests
     runs-on: macos-latest
 
     strategy:
       matrix:
-        api-level: [ 26, 34 ]
+        api-level: [ 26, 35 ]
         target: [ default, google_apis ]
 
     steps:
@@ -70,7 +79,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: 17
           distribution: 'temurin'
@@ -84,19 +93,9 @@ jobs:
       - name: Unit Tests
         run: ./gradlew test --stacktrace
 
-# Need to work through a permissions error to get these working
-#      - name: Instrumentation Tests
-#        uses: reactivecircus/android-emulator-runner@v2
-#        with:
-#          api-level: ${{ matrix.api-level }}
-#          target: ${{ matrix.target }}
-#          arch: x86_64
-#          profile: Nexus 6
-#          script: ./gradlew test check connectedCheck -x lint --stacktrace
-
       # Only upload the reports on failure
       - name: Upload Reports
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: Test-Reports
           path: networksurvey/build/reports

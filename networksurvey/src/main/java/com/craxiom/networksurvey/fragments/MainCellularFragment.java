@@ -64,7 +64,7 @@ public class MainCellularFragment extends AServiceDataFragment
                 {
                     // Restart this fragment (yes, it seems overly complicated but it works)
                     FragmentManager fragmentManager = getParentFragmentManager();
-                    Fragment currentFragment = fragmentManager.findFragmentById(R.id.main_cellular_fragment);
+                    Fragment currentFragment = fragmentManager.findFragmentById(R.id.cellular_fragment_container_view);
                     if (currentFragment != null)
                     {
                         FragmentTransaction detachTransaction = fragmentManager.beginTransaction();

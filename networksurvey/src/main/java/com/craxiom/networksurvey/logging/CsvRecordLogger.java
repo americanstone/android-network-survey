@@ -1,8 +1,6 @@
 package com.craxiom.networksurvey.logging;
 
 import android.content.Context;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -11,6 +9,7 @@ import android.widget.Toast;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.services.SurveyRecordProcessor;
+import com.craxiom.networksurvey.util.NsUtils;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 
 import org.apache.commons.csv.CSVFormat;
@@ -19,12 +18,15 @@ import org.apache.commons.csv.CSVPrinter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import timber.log.Timber;
@@ -45,6 +47,8 @@ public abstract class CsvRecordLogger
      * during rollover.
      */
     protected final Object csvFileLock = new Object();
+
+    private final DecimalFormat twoDecimalFormat = new DecimalFormat("#.##");
 
     private Context applicationContext;
     final Handler handler;
@@ -75,6 +79,8 @@ public abstract class CsvRecordLogger
         this.logDirectoryName = logDirectoryName;
         this.fileNamePrefix = fileNamePrefix;
         this.lazyFileCreation = lazyFileCreation;
+
+        twoDecimalFormat.setRoundingMode(RoundingMode.CEILING);
     }
 
     public void onDestroy()
@@ -186,7 +192,7 @@ public abstract class CsvRecordLogger
 
         Timber.i("Creating the log file: %s", loggingFileName);
 
-        final String versionName = getVersionName();
+        final String versionName = NsUtils.getAppVersionName(applicationContext);
         final List<String> headerComments = new ArrayList<>();
         headerComments.add("Created by Network Survey version=" + versionName);
 
@@ -428,17 +434,24 @@ public abstract class CsvRecordLogger
     }
 
     /**
-     * @return The NS App version number, or an empty string if it could not be determined.
+     * Trims a double (location) to six decimal places, not removing extra zeros.
+     *
+     * @param value The double to trim.
+     * @return The trimmed double as a string.
      */
-    private String getVersionName()
+    String trimToSixDecimalPlaces(double value)
     {
-        try
-        {
-            PackageInfo info = applicationContext.getPackageManager().getPackageInfo(applicationContext.getPackageName(), 0);
-            return info.versionName;
-        } catch (PackageManager.NameNotFoundException e)
-        {
-            return "";
-        }
+        return String.format(Locale.getDefault(), "%.6f", value);
+    }
+
+    /**
+     * Rounds a double to 2 decimal places, removing extra zeros.
+     *
+     * @param value The double to round.
+     * @return The rounded double as a string.
+     */
+    String roundToTwoDecimalPlaces(double value)
+    {
+        return twoDecimalFormat.format(value);
     }
 }

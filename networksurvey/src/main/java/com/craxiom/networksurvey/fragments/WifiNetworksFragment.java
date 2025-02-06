@@ -12,9 +12,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -22,13 +19,9 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.view.MenuProvider;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelStoreOwner;
-import androidx.navigation.Navigation;
-import androidx.navigation.fragment.NavHostFragment;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.SortedList;
@@ -41,6 +34,7 @@ import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener;
 import com.craxiom.networksurvey.model.WifiNetwork;
 import com.craxiom.networksurvey.model.WifiRecordWrapper;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.ui.wifi.model.WifiNetworkInfoList;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 import com.google.android.material.snackbar.Snackbar;
@@ -55,7 +49,7 @@ import timber.log.Timber;
  *
  * @since 0.1.2
  */
-public class WifiNetworksFragment extends AServiceDataFragment implements IWifiSurveyRecordListener, MenuProvider
+public class WifiNetworksFragment extends AServiceDataFragment implements IWifiSurveyRecordListener
 {
     private FragmentWifiNetworksListBinding binding;
     private SortedList<WifiRecordWrapper> wifiRecordSortedList;
@@ -97,9 +91,7 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
     {
         binding = FragmentWifiNetworksListBinding.inflate(inflater);
 
-        final ViewModelStoreOwner viewModelStoreOwner = NavHostFragment.findNavController(this).getViewModelStoreOwner(R.id.nav_graph);
-        final ViewModelProvider viewModelProvider = new ViewModelProvider(viewModelStoreOwner);
-        viewModel = viewModelProvider.get(getClass().getName(), WifiViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity()).get(WifiViewModel.class);
 
         binding.setVm(viewModel);
 
@@ -138,12 +130,6 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
                     // think that scans are being throttled by the Android OS.
                     if (paused) lastScanTime = System.currentTimeMillis();
                 });
-
-        FragmentActivity activity = getActivity();
-        if (activity != null)
-        {
-            activity.addMenuProvider(this, getViewLifecycleOwner());
-        }
 
         return binding.getRoot();
     }
@@ -226,6 +212,8 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
                     {
                         wifiNetworkRecyclerViewAdapter.notifyDataSetChanged();
                     }
+
+                    updateSharedModelWifiNetworkList();
                 }
             } catch (Exception e)
             {
@@ -237,23 +225,6 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
         });
     }
 
-    @Override
-    public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater)
-    {
-        menuInflater.inflate(R.menu.wifi_networks_menu, menu);
-    }
-
-    @Override
-    public boolean onMenuItemSelected(@NonNull MenuItem menuItem)
-    {
-        if (menuItem.getItemId() == R.id.action_open_spectrum)
-        {
-            navigateToWifiSpectrumScreen();
-            return true;
-        }
-        return false;
-    }
-
     /**
      * Navigates to the Wi-Fi details screen for the selected Wi-Fi network.
      */
@@ -262,32 +233,40 @@ public class WifiNetworksFragment extends AServiceDataFragment implements IWifiS
         FragmentActivity activity = getActivity();
         if (activity == null) return;
 
-        Navigation.findNavController(activity, getId())
-                .navigate(WifiNetworksFragmentDirections.actionWifiListFragmentToWifiDetailsFragment(
-                        wifiNetwork));
+        try
+        {
+            SharedViewModel viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+            viewModel.triggerNavigationToWifiDetails(wifiNetwork);
+        } catch (Exception e)
+        {
+            // An IllegalArgumentException can occur when the user switches to a new fragment (e.g. cellular details)
+            // before the navigation is complete. This is an edge case that we can ignore.
+            Timber.e(e, "Could not navigate to the Wi-Fi Details Fragment");
+        }
     }
 
     /**
-     * Navigates to the Wi-Fi spectrum screen.
+     * This is not ideal, but the {@link com.craxiom.networksurvey.ui.main.HomeScreenKt} needs a
+     * way to access the latest Wi-Fi scan results when the user navigates to the Wi-Fi Spectrum
+     * screen. Therefore, we are updating the shared view model with the latest Wi-Fi scan results
+     * every time we get a new scan result.
      */
-    public void navigateToWifiSpectrumScreen()
+    private void updateSharedModelWifiNetworkList()
     {
         FragmentActivity activity = getActivity();
         if (activity == null) return;
 
         List<WifiRecordWrapper> wifiNetworks = new ArrayList<>();
-        synchronized (wifiRecordSortedListLock)
+        int size = wifiRecordSortedList.size();
+        for (int i = 0; i < size; i++)
         {
-            int size = wifiRecordSortedList.size();
-            for (int i = 0; i < size; i++)
-            {
-                wifiNetworks.add(wifiRecordSortedList.get(i));
-            }
+            wifiNetworks.add(wifiRecordSortedList.get(i));
         }
         WifiNetworkInfoList wifiNetworkInfoList = new WifiNetworkInfoList(wifiNetworks);
 
-        Navigation.findNavController(activity, getId())
-                .navigate(WifiNetworksFragmentDirections.actionWifiListFragmentToWifiSpectrumFragment(wifiNetworkInfoList));
+        SharedViewModel viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+        Timber.i("Updating viewModel with the latest Wi-Fi scan results %s", wifiNetworkInfoList);
+        viewModel.updateWifiNetworkInfoList(wifiNetworkInfoList);
     }
 
     /**

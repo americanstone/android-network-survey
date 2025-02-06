@@ -26,7 +26,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.craxiom.networksurvey.ui.gnss.GnssStatusScreen
 import com.craxiom.networksurvey.ui.gnss.model.SignalInfoViewModel
-import com.craxiom.networksurvey.util.NsTheme
+import com.craxiom.networksurvey.ui.theme.NsTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 

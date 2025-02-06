@@ -7,8 +7,6 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 
-import timber.log.Timber;
-
 /**
  * Handles listening for locations from the "extra" location listeners that are added if the user
  * selects the "ALL" option for the location provider in the settings. The ALL option provides a way
@@ -28,7 +26,6 @@ public class ExtraLocationListener implements LocationListener
     @Override
     public void onLocationChanged(@NonNull Location location)
     {
-        Timber.i("In the %s extra location provider and saw a location update from the %s provider", selectedProvider, location.getProvider());
         if (selectedProvider.equals(location.getProvider()))
         {
             latestLocation = location;

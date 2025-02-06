@@ -22,6 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import com.craxiom.networksurvey.constants.BluetoothMessageConstants
 import com.craxiom.networksurvey.fragments.BluetoothDetailsFragment
 import com.craxiom.networksurvey.ui.SignalChart
 import com.craxiom.networksurvey.ui.UNKNOWN_RSSI
+import com.craxiom.networksurvey.ui.main.appbar.TitleBar
 import com.craxiom.networksurvey.util.ColorUtils
 
 /**
@@ -57,12 +59,21 @@ internal fun BluetoothDetailsScreen(
     val colorId = ColorUtils.getColorForSignalStrength(rssi)
     val colorResource = Color(context.getColor(colorId))
 
-    LazyColumn(
-        state = rememberLazyListState(),
-        contentPadding = PaddingValues(padding),
-        verticalArrangement = Arrangement.spacedBy(padding),
-    ) {
-        chartItems(viewModel, colorResource, rssi, scanRate, bluetoothDetailsFragment)
+    Scaffold(
+        topBar = {
+            TitleBar(
+                "Bluetooth Device Details"
+            ) { bluetoothDetailsFragment.navigateBack() }
+        },
+    ) { insetPadding ->
+        LazyColumn(
+            state = rememberLazyListState(),
+            contentPadding = PaddingValues(padding),
+            verticalArrangement = Arrangement.spacedBy(padding),
+            modifier = Modifier.padding(insetPadding)
+        ) {
+            chartItems(viewModel, colorResource, rssi, scanRate, bluetoothDetailsFragment)
+        }
     }
 }
 

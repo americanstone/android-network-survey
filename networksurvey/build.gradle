@@ -1,33 +1,44 @@
 apply plugin: 'com.android.application'
 apply plugin: "androidx.navigation.safeargs"
-apply plugin: "com.google.gms.google-services"
-apply plugin: "com.google.firebase.crashlytics"
+
+// Exclude google-services and crashlytics if the json file is missing and for debug builds
+if (file("google-services.json").exists() && !gradle.startParameter.taskNames.any { it.contains("Debug") || it.contains("test") }) {
+    logger.quiet("Using the google-services.json file")
+    apply plugin: "com.google.gms.google-services"
+    apply plugin: "com.google.firebase.crashlytics"
+}
+
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
 apply plugin: 'dagger.hilt.android.plugin'
+apply plugin: 'kotlin-parcelize'
+apply plugin: 'com.google.devtools.ksp'
 
 
 ext.androidVersion = '28.0.0'
-ext.grpcVersion = '1.61.1'
-ext.networkSurveyMessagingVersion = '1.2.0'
-ext.navigationVersion = '2.7.7'
+ext.grpcVersion = '1.68.0'
+ext.networkSurveyMessagingVersion = '1.6.0'
+ext.navigationVersion = '2.8.3'
 
 android {
-    compileSdk 34
+    compileSdk 35
     defaultConfig {
         buildConfigField "String", "MESSAGING_API_VERSION", "\"${networkSurveyMessagingVersion}\""
         buildConfigField 'String', "NS_API_KEY", "\"${nsApiKey}\""
+        buildConfigField 'String', "OCID_API_KEY", "\"${ocidApiKey}\""
         applicationId "com.craxiom.networksurvey"
         minSdkVersion 26
-        targetSdkVersion 34
-        versionCode 67
-        versionName "1.25-SNAPSHOT"
+        targetSdkVersion 35
+        versionCode 87
+        versionName "1.32"
         setProperty("archivesBaseName", "$applicationName-$versionName")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments clearPackageData: 'true'
     }
     buildTypes {
         debug {
+            applicationIdSuffix ".dev" // Suffix for debug builds
+            resValue "string", "app_name", "NS - dev"
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -46,7 +57,7 @@ android {
         compose true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion '1.5.7'
+        kotlinCompilerExtensionVersion '1.5.14'
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -68,7 +79,7 @@ android {
     }
     namespace 'com.craxiom.networksurvey'
 
-    flavorDimensions "version"
+    flavorDimensions = ["version"]
     productFlavors {
         // Regular is for Google Play that contains Firebase tracking features such as crashlytics
         regular {
@@ -77,7 +88,7 @@ android {
 
         // Has the extra CDR features and does not contain any tracking
         cdr {
-            versionNameSuffix "-cdr"
+            versionNameSuffix ""
         }
     }
 }
@@ -89,7 +100,7 @@ configurations.configureEach {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.jakewharton.timber:timber:5.0.1'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
@@ -99,7 +110,9 @@ dependencies {
     implementation "androidx.navigation:navigation-fragment-ktx:${navigationVersion}"
     implementation "androidx.navigation:navigation-ui-ktx:${navigationVersion}"
     implementation "androidx.navigation:navigation-compose:${navigationVersion}"
-    implementation "androidx.viewpager2:viewpager2:1.0.0"
+    implementation "androidx.viewpager2:viewpager2:1.1.0"
+    implementation "androidx.activity:activity-compose:1.9.3"
+    implementation "androidx.drawerlayout:drawerlayout:1.2.0"
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
 
     implementation "io.grpc:grpc-stub:${grpcVersion}"
@@ -113,14 +126,14 @@ dependencies {
     implementation("com.craxiom:network-survey-messaging:${networkSurveyMessagingVersion}") {
         exclude group: 'com.google.api.grpc', module: 'proto-google-common-protos'
     }
-    implementation "com.google.protobuf:protobuf-java-util:3.24.3"
+    implementation "com.google.protobuf:protobuf-java-util:4.27.3"
 
     implementation "mil.nga.geopackage:geopackage-android:6.7.3"
     implementation 'org.apache.commons:commons-csv:1.10.0'
 
-    implementation 'com.craxiom:mqtt-library:0.7.2'
+    implementation 'com.craxiom:mqtt-library:0.7.4'
 
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
 
     implementation 'app.futured.donut:donut:2.2.3'
@@ -128,21 +141,30 @@ dependencies {
     implementation 'com.patrykandpatrick.vico:core:2.0.0-alpha.6'
     implementation 'com.patrykandpatrick.vico:compose-m3:2.0.0-alpha.6'
 
-    implementation 'com.github.yuriy-budiyev:code-scanner:2.1.2'
+    implementation 'com.github.yuriy-budiyev:code-scanner:2.3.2'
+    implementation 'com.google.zxing:core:3.5.3'
 
-    implementation 'com.google.dagger:dagger:2.45'
-    kapt 'com.google.dagger:dagger-compiler:2.45'
+    implementation 'androidx.room:room-common:2.6.1'
+
+    implementation "com.google.dagger:dagger:$hilt_version"
+    implementation 'androidx.compose.ui:ui-viewbinding:1.7.5'
+    implementation "androidx.room:room-runtime:$room_version"
+    ksp "androidx.room:room-compiler:$room_version"
+    kapt "com.google.dagger:dagger-compiler:$hilt_version"
     implementation "com.google.dagger:hilt-android:$hilt_version"
     kapt "com.google.dagger:hilt-compiler:$hilt_version"
 
     implementation 'org.osmdroid:osmdroid-android:6.1.18'
-    //implementation 'org.osmdroid:osmdroid-bonuspack:6.9.0' // Provides additional features including Marker clustering
+    // Provides additional features including Marker clustering
+    implementation 'com.github.MKergall:osmbonuspack:6.9.0'
 
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.11.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.11.0'
+
+    implementation "androidx.work:work-runtime:2.10.0"
 
     // Compose
-    def composeBom = platform('androidx.compose:compose-bom:2024.05.00')
+    def composeBom = platform('androidx.compose:compose-bom:2024.10.01')
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
@@ -156,25 +178,25 @@ dependencies {
     implementation "androidx.compose.ui:ui-tooling-preview"
     implementation "androidx.lifecycle:lifecycle-viewmodel-compose"
     implementation "androidx.lifecycle:lifecycle-runtime-compose"
-    implementation 'androidx.compose.ui:ui-tooling:1.6.7'
-    implementation "com.google.accompanist:accompanist-themeadapter-material:0.28.0"
+    implementation 'androidx.compose.ui:ui-tooling:1.7.5'
+    implementation "com.google.accompanist:accompanist-themeadapter-material:0.36.0"
 
     // Only include firebase in the google play build
-    regularImplementation platform('com.google.firebase:firebase-bom:33.0.0')
+    regularImplementation platform('com.google.firebase:firebase-bom:33.5.1')
     regularImplementation 'com.google.firebase:firebase-analytics'
     regularImplementation 'com.google.firebase:firebase-crashlytics'
 
     testImplementation 'junit:junit:4.13.2'
-    implementation 'androidx.annotation:annotation:1.7.1'
+    implementation 'androidx.annotation:annotation:1.9.1'
 
     // Uncomment if you want to hunt for memory leaks
     //debugImplementation 'com.squareup.leakcanary:leakcanary-android:3.0-alpha-1'
 
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test:runner:1.5.2'
-    androidTestImplementation 'androidx.test:rules:1.5.0'
-    androidTestImplementation 'com.adevinta.android:barista:4.2.0'
-    androidTestImplementation 'com.google.truth:truth:1.1.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'com.adevinta.android:barista:4.3.0'
+    androidTestImplementation 'com.google.truth:truth:1.4.4'
     androidTestImplementation "com.craxiom:network-survey-messaging:${networkSurveyMessagingVersion}"
     androidTestImplementation "mil.nga.geopackage:geopackage-android:6.7.3"
 }

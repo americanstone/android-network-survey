@@ -1,5 +1,92 @@
 # Changelog
 
+## [1.32](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.32) - 2025-01-16
+
+* Stale out old locations so they are not set on records and implement a location update rate ceiling - [#59](https://github.com/christianrowlands/android-network-survey/issues/59).
+* Adds a PLMN filter option for the Tower Map - [#56](https://github.com/christianrowlands/android-network-survey/issues/56).
+* Group the MCC and MNC together on the cellular UI - [#61](https://github.com/christianrowlands/android-network-survey/issues/61).
+* Fix a bug with displaying the Sector ID for the LTE Cellular Calculator.
+* Correctly display the Location Provider and log file type preferences in the settings when set via MDM.
+* Trim the locations in the CSV log file to 6 decimal places - [#67](https://github.com/christianrowlands/android-network-survey/issues/67).
+* Rounds the speed, altitude, and accuracy to 2 decimal places in the CSV log file for all survey types - [#68](https://github.com/christianrowlands/android-network-survey/issues/68).
+* Fix clicking on the Server Connection (gRPC) notification to open the connection UI.
+
+## [1.31](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.31) - 2024-11-04
+
+* UI updates throughout the app.
+* Sets the nonTerrestrialNetwork field in the phone state message (MQTT, gRPC, CSV, and GeoPackage)
+* Prevent a crash when viewing the GNSS UI when no GPS provider is available on the device.
+* Upgrade to SDK 35 (Android 15).
+* Leverage new Android 15 getRejectCause API.
+* Prevent really small speed values so that they are not displayed in scientific notation in JSON messages.
+* Add additional permission checks for the other paths that turn on CDR logging to improve the UX and prevent crashes.
+* Go to the devices location when the tower map is first opened and the info dialog is accepted.
+
+## [1.30.2](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.30.2) - 2024-09-26
+
+* Log the battery percentage in the device status message CSV file as an int instead of a protobuf value.
+
+## [1.30.1](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.30.1) - 2024-09-25
+
+* Don't add GMS and crashlytics to the classpath unless the google-services.json file is present.
+
+## [1.30](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.30) - 2024-09-24
+
+* Display the UMTS RNC ID and Short CID in the cellular details UI.
+* Fixes a crash that was triggered when CDR logging was enabled while enabling a second SIM card.
+* Other edge case crash fixes.
+
+## [1.29](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.29) - 2024-08-28
+
+* Support multiple SIM cards for the phone state messages (adds the slot field to the phone state message).
+* Adds multi-SIM support for the CDR feature of NS.
+* Adds the SIM slot to the CDR CSV records to track which SIM each record is associated with.
+* Fixes the gRPC connection (server connection) bug on Android 14.
+* Adds gRPC streaming for Phone State, Bluetooth, and GNSS records.
+* Adds stream options for all the different survey types to the gRPC connection.
+* Fixes a bug where the MDM override property was set differently in two places causing inconsistent override behavior.
+* Hide the MQTT share QR code button if the password is set via MDM.
+* Don't include the device name when sharing the MQTT connection information since it needs to be unique for each MQTT broker.
+* Save the latest connection parameters before creating the MQTT connection QR Code so that the latest values are shared.
+* Store the connection parameters on MDM override to facilitate MQTT start on boot and other edge case scenarios.
+
+## [1.28](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.28) - 2024-08-08
+
+* Adds a display overlay on the map with current serving cell information.
+* Update the Tower Map if the SIM count changes.
+* Adds the ability to start a survey via an Intent (see https://www.networksurvey.app/intent-api ).
+* Adds the streaming options to the MQTT Settings QR Code.
+* Adds a setting to turn on or off the ability for other apps to send intents to start/stop Network Survey.
+* Set the NS version number in the device status message.
+* Display the GSM BSIC in the cellular details view.
+* Fix a couple of edge case crashes.
+* Fixes a bug where the the LTE signal labels would remain visible when switching to a different technology.
+
+## [1.27](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.27) - 2024-07-24
+
+* Create a more detailed info window for the towers in the map view.
+* Imported the Tower data from BTSearch.
+* Adds the ability to share the MQTT connection settings via a QR Code.
+* Adds a start auto logging setting for CDR.
+* Logs the phone state messages to CSV.
+* Prevent the background location permission info dialog from displaying on every app opening.
+* Properly format the network registration info for the phone state message logging to CSV and GeoPackage.
+* Adds speed and deviceSerialNumber columns to the GeoPackage files, and deviceSerialNumber to the CSV files. Also adds deviceModel to the GNSS CSV files.
+* Fix a few edge case crash bugs.
+
+## [1.26](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.26) - 2024-06-28
+
+* Fixes a bug with gRPC streaming on Android 14. (Thanks [PeregrineFalcon](https://github.com/PeregrineFalcon))
+* Fixes a couple edge case app crashes.
+* Display the serving cell on the Tower Map.
+* Draws a line to the serving cell on the Tower Map.
+* Adds a follow me button to the Tower Map.
+* Keeps the same zoom level when going to your location on the Tower Map.
+
+## [1.25](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.25) - 2024-06-14
+
+* Adds a Tower Map view that shows the location of cellular towers.
+
 ## [1.24](https://github.com/christianrowlands/android-network-survey/releases/tag/v1.24) - 2024-05-14
 
 * Adds a 5G NR calculator to the cellular calculators.

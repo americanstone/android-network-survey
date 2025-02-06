@@ -12,9 +12,6 @@ import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.os.Bundle;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TableLayout;
@@ -25,13 +22,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
-import androidx.core.view.MenuProvider;
-import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelStoreOwner;
-import androidx.navigation.Navigation;
-import androidx.navigation.fragment.NavHostFragment;
 
 import com.craxiom.messaging.GsmRecord;
 import com.craxiom.messaging.GsmRecordData;
@@ -41,7 +33,6 @@ import com.craxiom.messaging.NrRecord;
 import com.craxiom.messaging.NrRecordData;
 import com.craxiom.messaging.UmtsRecord;
 import com.craxiom.messaging.UmtsRecordData;
-import com.craxiom.networksurvey.CalculationUtils;
 import com.craxiom.networksurvey.R;
 import com.craxiom.networksurvey.constants.LteMessageConstants;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
@@ -59,12 +50,12 @@ import com.craxiom.networksurvey.services.NetworkSurveyService;
 import com.craxiom.networksurvey.ui.cellular.CellularChartViewModel;
 import com.craxiom.networksurvey.ui.cellular.ComposeFunctions;
 import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
+import com.craxiom.networksurvey.util.CalculationUtils;
 import com.craxiom.networksurvey.util.CellularUtils;
 import com.craxiom.networksurvey.util.ColorUtils;
 import com.craxiom.networksurvey.util.MathUtils;
 import com.craxiom.networksurvey.util.ParserUtils;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.GeneratedMessageV3;
 import com.mackhartley.roundedprogressbar.RoundedProgressBar;
 
 import java.text.DecimalFormat;
@@ -84,7 +75,7 @@ import timber.log.Timber;
  *
  * @since 1.6.0 (It really came earlier, but was minimal until the 1.6.0 rewrite.
  */
-public class NetworkDetailsFragment extends AServiceDataFragment implements ICellularSurveyRecordListener, LocationListener, MenuProvider
+public class NetworkDetailsFragment extends AServiceDataFragment implements ICellularSurveyRecordListener, LocationListener
 {
     public static final String SUBSCRIPTION_ID_KEY = "subscription_id";
 
@@ -103,7 +94,7 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
     private FragmentNetworkDetailsBinding binding;
     private CellularViewModel viewModel;
     private CellularChartViewModel chartViewModel;
-    private CellularRecordWrapper latestServingCellRecord;
+    private SharedViewModel sharedViewModel;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState)
@@ -122,10 +113,9 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
     {
         binding = FragmentNetworkDetailsBinding.inflate(inflater);
 
-        final ViewModelStoreOwner viewModelStoreOwner = NavHostFragment.findNavController(this).getViewModelStoreOwner(R.id.nav_graph);
-        final ViewModelProvider viewModelProvider = new ViewModelProvider(viewModelStoreOwner);
-        viewModel = viewModelProvider.get(getClass().getName() + subscriptionId, CellularViewModel.class);
-        chartViewModel = viewModelProvider.get(getClass().getName() + "cellular_chart" + subscriptionId, CellularChartViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity()).get(getClass().getName() + subscriptionId, CellularViewModel.class);
+        chartViewModel = new ViewModelProvider(requireActivity()).get(getClass().getName() + "cellular_chart" + subscriptionId, CellularChartViewModel.class);
+        sharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
 
         initializeLocationTextView();
 
@@ -136,12 +126,6 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
         chartViewModel.addInitialRssi(UNKNOWN_RSSI);
         ComposeFunctions.
                 setContent(binding.composeView, chartViewModel);
-
-        FragmentActivity activity = getActivity();
-        if (activity != null)
-        {
-            activity.addMenuProvider(this, getViewLifecycleOwner());
-        }
 
         return binding.getRoot();
     }
@@ -242,35 +226,6 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
         viewModel.setLocation(location);
     }
 
-    @Override
-    public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater)
-    {
-       menuInflater.inflate(R.menu.cellular_details_menu, menu);
-    }
-
-    @Override
-    public boolean onMenuItemSelected(@NonNull MenuItem menuItem)
-    {
-        if (menuItem.getItemId() == R.id.action_open_tower_map)
-        {
-            navigateToTowerMap();
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Navigates to the cell tower map screen.
-     */
-    public void navigateToTowerMap()
-    {
-        FragmentActivity activity = getActivity();
-        if (activity == null) return;
-
-        Navigation.findNavController(activity, R.id.main_content)
-                .navigate(MainCellularFragmentDirections.actionMainCellularFragmentToTowerMapFragment(new ServingCellInfo(latestServingCellRecord, subscriptionId)));
-    }
-
     /**
      * Initialize the UI listeners for the various buttons and other UI elements.
      */
@@ -298,8 +253,8 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
 
         viewModel.getServingCellProtocol().observe(viewLifecycleOwner, this::updateServingCellProtocol);
 
-        viewModel.getMcc().observe(viewLifecycleOwner, s -> binding.mcc.setText(s));
-        viewModel.getMnc().observe(viewLifecycleOwner, s -> binding.mnc.setText(s));
+        viewModel.getMcc().observe(viewLifecycleOwner, s -> binding.plmn.setText(getString(R.string.mcc_mnc_value, s, viewModel.getMnc().getValue())));
+        viewModel.getMnc().observe(viewLifecycleOwner, s -> binding.plmn.setText(getString(R.string.mcc_mnc_value, viewModel.getMcc().getValue(), s)));
         viewModel.getAreaCode().observe(viewLifecycleOwner, s -> binding.tac.setText(s));
         viewModel.getCellId().observe(viewLifecycleOwner, this::updateCellIdentity);
         viewModel.getChannelNumber().observe(viewLifecycleOwner, s -> binding.earfcn.setText(s));
@@ -517,7 +472,9 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
                 binding.cqiGroup.setVisibility(View.GONE);
                 binding.signalOneLabel.setText(R.string.rssi_label);
                 binding.signalTwoGroup.setVisibility(View.GONE);
+                binding.signalTwoLabel.setVisibility(View.GONE);
                 binding.signalThreeGroup.setVisibility(View.GONE);
+                binding.signalThreeLabel.setVisibility(View.GONE);
 
                 chartViewModel.setChartTitle("RSSI");
                 chartViewModel.setCellularProtocol(protocol);
@@ -530,7 +487,9 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
                 binding.enbIdGroup.setVisibility(View.GONE);
                 binding.sectorIdGroup.setVisibility(View.GONE);
                 binding.signalTwoGroup.setVisibility(View.GONE);
+                binding.signalTwoLabel.setVisibility(View.GONE);
                 binding.signalThreeGroup.setVisibility(View.GONE);
+                binding.signalThreeLabel.setVisibility(View.GONE);
 
                 chartViewModel.setChartTitle("RSSI");
                 chartViewModel.setCellularProtocol(protocol);
@@ -538,8 +497,10 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
 
             case UMTS:
                 binding.tacLabel.setText(R.string.lac_label);
-                binding.enbIdGroup.setVisibility(View.GONE);
-                binding.sectorIdGroup.setVisibility(View.GONE);
+                binding.enbIdLabel.setText(R.string.rnc_label);
+                binding.enbIdGroup.setVisibility(View.VISIBLE);
+                binding.sectorIdLabel.setText(R.string.short_cid_label);
+                binding.sectorIdGroup.setVisibility(View.VISIBLE);
                 binding.earfcnLabel.setText(R.string.uarfcn_label);
                 binding.pciLabel.setText(R.string.psc_label);
                 binding.bandwidthGroup.setVisibility(View.GONE);
@@ -548,7 +509,9 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
                 binding.signalOneLabel.setText(R.string.rssi_label);
                 binding.signalTwoLabel.setText(R.string.rscp_label);
                 binding.signalTwoGroup.setVisibility(View.VISIBLE);
+                binding.signalTwoLabel.setVisibility(View.VISIBLE);
                 binding.signalThreeGroup.setVisibility(View.GONE);
+                binding.signalThreeLabel.setVisibility(View.GONE);
 
                 chartViewModel.setChartTitle("RSCP");
                 chartViewModel.setCellularProtocol(protocol);
@@ -558,7 +521,9 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
 
             case LTE:
                 binding.tacLabel.setText(R.string.tac_label);
+                binding.enbIdLabel.setText(R.string.enb_id_label);
                 binding.enbIdGroup.setVisibility(View.VISIBLE);
+                binding.sectorIdLabel.setText(R.string.sector_id_label);
                 binding.sectorIdGroup.setVisibility(View.VISIBLE);
                 binding.earfcnLabel.setText(R.string.earfcn_band_label);
                 binding.pciLabel.setText(R.string.pci_label);
@@ -568,8 +533,10 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
                 binding.signalOneLabel.setText(R.string.rsrp_label);
                 binding.signalTwoLabel.setText(R.string.rsrq_label);
                 binding.signalTwoGroup.setVisibility(View.VISIBLE);
+                binding.signalTwoLabel.setVisibility(View.VISIBLE);
                 binding.signalThreeLabel.setText(R.string.snr_label);
                 binding.signalThreeGroup.setVisibility(View.VISIBLE);
+                binding.signalThreeLabel.setVisibility(View.VISIBLE);
 
                 chartViewModel.setChartTitle("RSRP");
                 chartViewModel.setCellularProtocol(protocol);
@@ -589,8 +556,10 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
                 binding.signalOneLabel.setText(R.string.ss_rsrp_label);
                 binding.signalTwoLabel.setText(R.string.ss_rsrq_label);
                 binding.signalTwoGroup.setVisibility(View.VISIBLE);
+                binding.signalTwoLabel.setVisibility(View.VISIBLE);
                 binding.signalThreeLabel.setText(R.string.ss_sinr_label);
                 binding.signalThreeGroup.setVisibility(View.VISIBLE);
+                binding.signalThreeLabel.setVisibility(View.VISIBLE);
 
                 chartViewModel.setChartTitle("SS RSRP");
                 chartViewModel.setCellularProtocol(protocol);
@@ -631,7 +600,7 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
         {
             if (CellularUtils.isServingCell(cellularRecord.cellularRecord))
             {
-                latestServingCellRecord = cellularRecord;
+                sharedViewModel.updateLatestServingCellInfo(new ServingCellInfo(cellularRecord, subscriptionId));
             }
 
             switch (cellularRecord.cellularProtocol)
@@ -953,7 +922,8 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
             chartViewModel.setServingCellId(ci);
             binding.cid.setText(String.valueOf(ci));
 
-            if (viewModel.getServingCellProtocol().getValue() == CellularProtocol.LTE)
+            CellularProtocol servingCellProtocol = viewModel.getServingCellProtocol().getValue();
+            if (servingCellProtocol == CellularProtocol.LTE)
             {
                 // The Cell Identity is 28 bits long. The first 20 bits represent the Macro eNodeB ID. The last 8 bits
                 // represent the sector.  Strip off the last 8 bits to get the Macro eNodeB ID.
@@ -962,6 +932,15 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
 
                 int sectorId = CalculationUtils.getSectorIdFromCellId(ci);
                 binding.sectorId.setText(String.valueOf(sectorId));
+            } else if (servingCellProtocol == CellularProtocol.UMTS)
+            {
+                // The UMTS CID is 28 bits long. The first 12 bits represent the RNC ID. The last 16 bits represent the
+                // Short Cell ID. Strip off the last 16 bits to get the RNC ID.
+                int umtsRnc = CalculationUtils.getUmtsRncFromCid(ci);
+                binding.enbId.setText(String.valueOf(umtsRnc));
+
+                int umtsShortCellId = CalculationUtils.getUmtsShortCellIdFromCid(ci);
+                binding.sectorId.setText(String.valueOf(umtsShortCellId));
             }
         } else
         {
@@ -1025,6 +1004,12 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
         final CellularProtocol protocol = viewModel.getServingCellProtocol().getValue();
         if (protocol == null) return;
 
+        if (protocol != CellularProtocol.LTE && protocol != CellularProtocol.NR)
+        {
+            Timber.e("Somehow the protocol is incorrect for the third signal strength. protocol=%s", protocol);
+            return;
+        }
+
         binding.signalThreeGroup.setVisibility(signalValue == null ? View.GONE : View.VISIBLE);
         binding.signalThreeValue.setText(signalValue != null ? getString(R.string.db_value_label, String.valueOf(signalValue)) : "");
         setSignalStrengthBar(binding.progressBarSignalThree, signalValue, protocol.getMinSignalThree(), protocol.getMaxNormalizedSignalThree());
@@ -1038,7 +1023,7 @@ public class NetworkDetailsFragment extends AServiceDataFragment implements ICel
      */
     private void setSignalStrengthBar(RoundedProgressBar signalStrengthBar, Integer signalValue, int minValue, int maxNormalizedValue)
     {
-        if (signalValue == null)
+        if (signalValue == null || maxNormalizedValue < 0)
         {
             signalStrengthBar.setProgressPercentage(0, false);
             return;

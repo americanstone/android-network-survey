@@ -91,6 +91,7 @@ import com.craxiom.networksurvey.listeners.ICellularSurveyRecordListener;
 import com.craxiom.networksurvey.listeners.IDeviceStatusListener;
 import com.craxiom.networksurvey.listeners.IGnssSurveyRecordListener;
 import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener;
+import com.craxiom.networksurvey.logging.db.DbUploadStore;
 import com.craxiom.networksurvey.model.CdrEvent;
 import com.craxiom.networksurvey.model.CdrEventType;
 import com.craxiom.networksurvey.model.CellularProtocol;
@@ -98,9 +99,11 @@ import com.craxiom.networksurvey.model.CellularRecordWrapper;
 import com.craxiom.networksurvey.model.ConstellationFreqKey;
 import com.craxiom.networksurvey.model.NrRecordWrapper;
 import com.craxiom.networksurvey.model.WifiRecordWrapper;
-import com.craxiom.networksurvey.util.IOUtils;
+import com.craxiom.networksurvey.services.controller.CellularController;
+import com.craxiom.networksurvey.util.FormatUtils;
 import com.craxiom.networksurvey.util.LocationUtils;
 import com.craxiom.networksurvey.util.MathUtils;
+import com.craxiom.networksurvey.util.NsUtils;
 import com.craxiom.networksurvey.util.ParserUtils;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 import com.craxiom.networksurvey.util.WifiUtils;
@@ -162,6 +165,8 @@ public class SurveyRecordProcessor
     private final Set<IDeviceStatusListener> deviceStatusListeners = new CopyOnWriteArraySet<>();
     private volatile NetworkSurveyActivity networkSurveyActivity;
 
+    private DbUploadStore cellularDbSink;
+
     private final ExecutorService executorService;
     private final String deviceId;
     private final String missionId;
@@ -182,7 +187,7 @@ public class SurveyRecordProcessor
     private int gnssScanRateMs;
 
     private int currentCallState = TelephonyManager.CALL_STATE_IDLE;
-    private CdrEvent currentCdrCellIdentity = new CdrEvent(CdrEventType.LOCATION_UPDATE, "", "");
+    private CdrEvent currentCdrCellIdentity = new CdrEvent(CdrEventType.LOCATION_UPDATE, "", "", CellularController.DEFAULT_SUBSCRIPTION_ID);
 
     /**
      * Creates a new processor that can consume the raw survey records in Android format and convert them to the
@@ -299,6 +304,22 @@ public class SurveyRecordProcessor
     void unregisterDeviceStatusListener(IDeviceStatusListener deviceStatusListener)
     {
         deviceStatusListeners.remove(deviceStatusListener);
+    }
+
+    /**
+     * Adds a sink for the local database that does not follow the typical listener lifecycle.
+     * More specifically, when the last regular listener is removed then the survey service will
+     * be shutdown, but this DB sink will always want to consume records if they are being created
+     * and will not prevent the survey service from being shutdown.
+     */
+    public synchronized void addDbSink(DbUploadStore dbSink)
+    {
+        cellularDbSink = dbSink;
+    }
+
+    public synchronized void removeDbSink()
+    {
+        cellularDbSink = null;
     }
 
     /**
@@ -532,9 +553,9 @@ public class SurveyRecordProcessor
      */
     @SuppressLint("NewApi")
     @RequiresApi(api = Build.VERSION_CODES.Q)
-    public void onServiceStateChanged(ServiceState serviceState, TelephonyManager telephonyManager)
+    public void onServiceStateChanged(ServiceState serviceState, TelephonyManager telephonyManager, int subscriptionId)
     {
-        notifyPhoneStateListeners(createPhoneStateMessage(telephonyManager,
+        notifyPhoneStateListeners(createPhoneStateMessage(telephonyManager, subscriptionId, serviceState,
                 builder -> {
                     // The documentation indicates the getNetworkRegistrationInfoList method was added in API level 30,
                     // but I found it works for API level 29 as well. I filed a bug: https://issuetracker.google.com/issues/190809962
@@ -546,9 +567,9 @@ public class SurveyRecordProcessor
                 }));
     }
 
-    void onCdrServiceStateChanged(ServiceState serviceState, TelephonyManager telephonyManager)
+    public void onCdrServiceStateChanged(ServiceState serviceState, TelephonyManager telephonyManager, int subscriptionId)
     {
-        CdrEvent cdrEvent = new CdrEvent(CdrEventType.LOCATION_UPDATE, "", "");
+        CdrEvent cdrEvent = new CdrEvent(CdrEventType.LOCATION_UPDATE, "", "", subscriptionId);
         setCellInfo(cdrEvent, serviceState);
 
         if (currentCdrCellIdentity.locationAreaChanged(cdrEvent))
@@ -566,7 +587,7 @@ public class SurveyRecordProcessor
      * @param telephonyManager Used to get the cell identity of the current cell.
      * @param myPhoneNumber    This device's phone number. Only present if the READ_PHONE_NUMBERS permission is granted.
      */
-    void onCallStateChanged(int state, String otherPhoneNumber, TelephonyManager telephonyManager, String myPhoneNumber)
+    public void onCallStateChanged(int state, String otherPhoneNumber, TelephonyManager telephonyManager, String myPhoneNumber, int subscriptionId)
     {
         Timber.d("Current call state=%s, new call state=%s", currentCallState, state);
         CdrEvent cdrEvent = null;
@@ -580,13 +601,13 @@ public class SurveyRecordProcessor
                 // will also be set on an incoming call, but it will transition from ringing to offhook.
                 if (currentCallState == TelephonyManager.CALL_STATE_IDLE)
                 {
-                    cdrEvent = new CdrEvent(CdrEventType.OUTGOING_CALL, myPhoneNumber, otherPhoneNumber);
+                    cdrEvent = new CdrEvent(CdrEventType.OUTGOING_CALL, myPhoneNumber, otherPhoneNumber, subscriptionId);
                     setCellInfo(cdrEvent, telephonyManager);
                 }
                 break;
 
             case TelephonyManager.CALL_STATE_RINGING: // Incoming
-                cdrEvent = new CdrEvent(CdrEventType.INCOMING_CALL, otherPhoneNumber, myPhoneNumber);
+                cdrEvent = new CdrEvent(CdrEventType.INCOMING_CALL, otherPhoneNumber, myPhoneNumber, subscriptionId);
                 setCellInfo(cdrEvent, telephonyManager);
                 break;
 
@@ -598,12 +619,13 @@ public class SurveyRecordProcessor
         finishCdrEvent(cdrEvent);
     }
 
-    public void onSmsEvent(CdrEventType smsEventType, String originatingAddress, TelephonyManager telephonyManager, String destinationAddress)
+    public void onSmsEvent(CdrEventType smsEventType, String originatingAddress, TelephonyManager telephonyManager,
+                           String destinationAddress, int subscriptionId)
     {
         if (cdrListeners.isEmpty()) return;
 
         Timber.d("onSmsEvent outgoingAddress=%s, destinationAddress=%s", originatingAddress, destinationAddress);
-        CdrEvent cdrEvent = new CdrEvent(smsEventType, originatingAddress, destinationAddress);
+        CdrEvent cdrEvent = new CdrEvent(smsEventType, originatingAddress, destinationAddress, subscriptionId);
         setCellInfo(cdrEvent, telephonyManager);
         finishCdrEvent(cdrEvent);
     }
@@ -634,13 +656,15 @@ public class SurveyRecordProcessor
      * @since 1.4.0
      */
     void onRegistrationFailed(@NonNull CellIdentity cellIdentity, int domain,
-                              int causeCode, int additionalCauseCode, TelephonyManager telephonyManager)
+                              int causeCode, int additionalCauseCode, TelephonyManager telephonyManager,
+                              int subscriptionId, ServiceState serviceState)
     {
-        notifyPhoneStateListeners(createPhoneStateMessage(telephonyManager,
+        notifyPhoneStateListeners(createPhoneStateMessage(telephonyManager, subscriptionId, serviceState,
                 builder -> builder.addNetworkRegistrationInfo(ParserUtils.convertNetworkInfo(cellIdentity, domain, causeCode))));
     }
 
-    private PhoneState createPhoneStateMessage(TelephonyManager telephonyManager, Consumer<PhoneStateData.Builder> networkRegistrationInfoFunction)
+    private PhoneState createPhoneStateMessage(TelephonyManager telephonyManager, int subscriptionId,
+                                               ServiceState serviceState, Consumer<PhoneStateData.Builder> networkRegistrationInfoFunction)
     {
         final PhoneStateData.Builder dataBuilder = PhoneStateData.newBuilder();
 
@@ -655,19 +679,33 @@ public class SurveyRecordProcessor
                 dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
 
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(phoneStateRecordNumber++);
 
         dataBuilder.setSimState(SimState.forNumber(telephonyManager.getSimState()));
         dataBuilder.setSimOperator(telephonyManager.getSimOperator());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM)
+        {
+            dataBuilder.setNonTerrestrialNetwork(BoolValue.of(serviceState.isUsingNonTerrestrialNetwork()));
+        }
+
+        if (subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID && subscriptionId != SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
+        {
+            dataBuilder.setSlot(Int32Value.of(subscriptionId));
+        }
 
         networkRegistrationInfoFunction.accept(dataBuilder);
 
@@ -966,13 +1004,17 @@ public class SurveyRecordProcessor
                 dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(recordNumber++);
         dataBuilder.setGroupNumber(groupNumber);
@@ -1066,13 +1108,17 @@ public class SurveyRecordProcessor
                 dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(recordNumber++);
         dataBuilder.setGroupNumber(groupNumber);
@@ -1153,13 +1199,17 @@ public class SurveyRecordProcessor
                 dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(recordNumber++);
         dataBuilder.setGroupNumber(groupNumber);
@@ -1269,13 +1319,17 @@ public class SurveyRecordProcessor
                 dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(recordNumber++);
         dataBuilder.setGroupNumber(groupNumber);
@@ -1413,14 +1467,9 @@ public class SurveyRecordProcessor
         final int tac = cellIdentity.getTac();
         final long nci = cellIdentity.getNci();
         int[] bands = new int[0];
-        Timber.i("Getting the NR Bands"); // TODO Delete this logging
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)
         {
             bands = cellIdentity.getBands();
-        }
-        for (int band : bands)
-        {
-            Timber.i("NR Band: %d", band); // TODO Delete this logging
         }
 
         CharSequence provider = null;
@@ -1462,13 +1511,17 @@ public class SurveyRecordProcessor
                 dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(recordNumber++);
         dataBuilder.setGroupNumber(groupNumber);
@@ -1572,13 +1625,17 @@ public class SurveyRecordProcessor
                 dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(wifiRecordNumber++);
 
@@ -1673,13 +1730,17 @@ public class SurveyRecordProcessor
                 dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(bluetoothRecordNumber++);
 
@@ -1709,6 +1770,11 @@ public class SurveyRecordProcessor
                 dataBuilder.setSupportedTechnologies(supportedTech);
             }
         }
+
+        /*BluetoothClass bluetoothClass = device.getBluetoothClass();
+        int majorDeviceClass = bluetoothClass.getMajorDeviceClass();
+        int deviceClass = bluetoothClass.getDeviceClass();
+        Timber.i("Bluetooth Major Device Class: %s, Device Class: %s", Integer.toHexString(majorDeviceClass), Integer.toHexString(deviceClass));*/
 
         final BluetoothRecord.Builder recordBuilder = BluetoothRecord.newBuilder();
         recordBuilder.setMessageType(BluetoothMessageConstants.BLUETOOTH_RECORD_MESSAGE_TYPE);
@@ -1755,13 +1821,17 @@ public class SurveyRecordProcessor
 
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(gnssRecordNumber++);
         dataBuilder.setGroupNumber(gnssGroupNumber);
@@ -1841,13 +1911,17 @@ public class SurveyRecordProcessor
 
                 if (lastKnownLocation.hasSpeed())
                 {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
+                    float speed = FormatUtils.formatSpeed(lastKnownLocation.getSpeed());
+                    if (speed != 0f)
+                    {
+                        dataBuilder.setSpeed(speed);
+                    }
                 }
             }
         }
 
         dataBuilder.setDeviceSerialNumber(deviceId);
-        dataBuilder.setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
+        dataBuilder.setDeviceTime(NsUtils.getRfc3339String(ZonedDateTime.now()));
         dataBuilder.setMissionId(missionId);
         dataBuilder.setRecordNumber(gnssRecordNumber++);
         dataBuilder.setGroupNumber(gnssGroupNumber);
@@ -1915,8 +1989,8 @@ public class SurveyRecordProcessor
     {
         Standard wifiStandard = switch (androidWifiStandard)
         {
-            case ScanResult.WIFI_STANDARD_UNKNOWN, ScanResult.WIFI_STANDARD_LEGACY, ScanResult.WIFI_STANDARD_11AD ->
-                    Standard.UNKNOWN;
+            case ScanResult.WIFI_STANDARD_UNKNOWN, ScanResult.WIFI_STANDARD_LEGACY,
+                 ScanResult.WIFI_STANDARD_11AD -> Standard.UNKNOWN;
             case ScanResult.WIFI_STANDARD_11N -> Standard.IEEE80211N;
             case ScanResult.WIFI_STANDARD_11AC -> Standard.IEEE80211AC;
             case ScanResult.WIFI_STANDARD_11AX -> Standard.IEEE80211AX;
@@ -2327,6 +2401,15 @@ public class SurveyRecordProcessor
                 Timber.e(t, "Unable to notify a Cellular Survey Record Listener because of an exception");
             }
         });
+
+        // Synchronized because the user can turn off the DB sink via the UI, which would set it to null
+        synchronized (this)
+        {
+            if (cellularDbSink != null)
+            {
+                cellularDbSink.onCellularBatch(cellularRecords, subscriptionId);
+            }
+        }
     }
 
     /**
@@ -2369,6 +2452,15 @@ public class SurveyRecordProcessor
             } catch (Exception e)
             {
                 Timber.e(e, "Unable to notify a Wi-Fi Survey Record Listener because of an exception");
+            }
+        }
+
+        // Synchronized because the user can turn off the DB sink via the UI, which would set it to null
+        synchronized (this)
+        {
+            if (cellularDbSink != null)
+            {
+                cellularDbSink.onWifiBeaconSurveyRecords(wifiBeaconRecords);
             }
         }
     }

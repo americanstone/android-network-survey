@@ -2,6 +2,8 @@ package com.craxiom.networksurvey.constants;
 
 import android.telephony.CellInfo;
 
+import com.craxiom.mqttlibrary.MqttConstants;
+
 /**
  * Some constants used in the Network Survey App.
  *
@@ -77,6 +79,18 @@ public class NetworkSurveyConstants
      */
     public static final String EXTRA_STARTED_AT_BOOT = "com.craxiom.networksurvey.extra.STARTED_AT_BOOT";
 
+    /**
+     * The key for the Intent extra that indicates the {@link com.craxiom.networksurvey.services.NetworkSurveyService}
+     * is being started via an external intent.
+     */
+    public static final String EXTRA_STARTED_VIA_EXTERNAL_INTENT = "com.craxiom.networksurvey.extra.STARTED_VIA_EXTERNAL_INTENT";
+    public static final String EXTRA_CELLULAR_FILE_LOGGING = "cellular_file_logging";
+    public static final String EXTRA_WIFI_FILE_LOGGING = "wifi_file_logging";
+    public static final String EXTRA_BLUETOOTH_FILE_LOGGING = "bluetooth_file_logging";
+    public static final String EXTRA_GNSS_FILE_LOGGING = "gnss_file_logging";
+    public static final String EXTRA_CDR_FILE_LOGGING = "cdr_file_logging";
+    public static final String EXTRA_MQTT_CONFIG_JSON = "mqtt_config_json";
+
     public static final int DEFAULT_CELLULAR_SCAN_INTERVAL_SECONDS = 5;
     public static final int DEFAULT_WIFI_SCAN_INTERVAL_SECONDS = 8;
     public static final int DEFAULT_BLUETOOTH_SCAN_INTERVAL_SECONDS = 30;
@@ -85,19 +99,29 @@ public class NetworkSurveyConstants
 
     public static final String DEFAULT_ROLLOVER_SIZE_MB = "5";
 
+    public static final boolean DEFAULT_UPLOAD_ENABLED = true;
+
+    public static final boolean DEFAULT_UPLOAD_TO_OPENCELLID = false;
+    public static final boolean DEFAULT_UPLOAD_TO_BEACONDB = false;
+    public static final boolean DEFAULT_UPLOAD_RETRY_ENABLED = true;
+
     public static final int LOCATION_PROVIDER_FUSED = 0;
     public static final int LOCATION_PROVIDER_GNSS = 1;
     public static final int LOCATION_PROVIDER_NETWORK = 2;
     public static final int LOCATION_PROVIDER_ALL = 3;
     public static final int DEFAULT_LOCATION_PROVIDER = LOCATION_PROVIDER_FUSED;
 
-    public static final String PROPERTY_MDM_OVERRIDE_KEY = "mdm_override";
+    public static final String PROPERTY_MDM_OVERRIDE_KEY = MqttConstants.PROPERTY_MQTT_MDM_OVERRIDE;
+
+    // MDM Only Preferences
+    public static final String MDM_PROPERTY_ALLOW_EXTERNAL_DATA_UPLOAD = "allow_external_data_upload";
 
     // Preferences
     public static final String PROPERTY_AUTO_START_CELLULAR_LOGGING = "auto_start_logging";
     public static final String PROPERTY_AUTO_START_WIFI_LOGGING = "auto_start_wifi_logging";
     public static final String PROPERTY_AUTO_START_BLUETOOTH_LOGGING = "auto_start_bluetooth_logging";
     public static final String PROPERTY_AUTO_START_GNSS_LOGGING = "auto_start_gnss_logging";
+    public static final String PROPERTY_AUTO_START_CDR_LOGGING = "auto_start_cdr_logging";
     public static final String PROPERTY_CELLULAR_SCAN_INTERVAL_SECONDS = "cellular_scan_interval_seconds";
     public static final String PROPERTY_WIFI_SCAN_INTERVAL_SECONDS = "wifi_scan_interval_seconds";
     public static final String PROPERTY_BLUETOOTH_SCAN_INTERVAL_SECONDS = "bluetooth_scan_interval_seconds";
@@ -106,6 +130,7 @@ public class NetworkSurveyConstants
     public static final String PROPERTY_LOG_ROLLOVER_SIZE_MB = "log_rollover_size_mb";
     public static final String PROPERTY_LOG_FILE_TYPE = "log_file_type";
     public static final String PROPERTY_LOCATION_PROVIDER = "location_provider";
+    public static final String PROPERTY_ALLOW_INTENT_CONTROL = "allow_intent_control";
     public static final String PROPERTY_IGNORE_WIFI_SCAN_THROTTLING_WARNING = "ignore_wifi_scan_throttling_warning";
 
     // A read only value in the preferences that shows the App Version
@@ -116,11 +141,30 @@ public class NetworkSurveyConstants
     // The following key is used in the app_restrictions.xml file and in the app's shared preferences
     public static final String PROPERTY_MQTT_START_ON_BOOT = "mqtt_start_on_boot";
 
+    /**
+     * Key for the preference on if records should be saved so that they can be uploaded to the
+     * tower databases.
+     */
+    public static final String PROPERTY_UPLOAD_ENABLED = "upload_enabled";
+    public static final String PROPERTY_UPLOAD_TO_OPENCELLID = "upload_to_opencellid";
+    public static final String PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD = "anonymous_opencellid_upload";
+    public static final String PROPERTY_UPLOAD_TO_BEACONDB = "upload_to_beacondb";
+    public static final String PROPERTY_UPLOAD_RETRY_ENABLED = "upload_retry_enabled";
+    public static final String PROPERTY_OCID_API_KEY = "ocid_api_key";
+    public static final String UPLOAD_PREFERENCES_GROUP = "upload_preferences_group";
+
     public static final String PROPERTY_MQTT_CELLULAR_STREAM_ENABLED = "cellular_stream_enabled";
     public static final String PROPERTY_MQTT_WIFI_STREAM_ENABLED = "wifi_stream_enabled";
     public static final String PROPERTY_MQTT_BLUETOOTH_STREAM_ENABLED = "bluetooth_stream_enabled";
     public static final String PROPERTY_MQTT_GNSS_STREAM_ENABLED = "gnss_stream_enabled";
     public static final String PROPERTY_MQTT_DEVICE_STATUS_STREAM_ENABLED = "device_status_stream_enabled";
+
+    public static final String PROPERTY_GRPC_CELLULAR_STREAM_ENABLED = "grpc_cellular_stream_enabled";
+    public static final String PROPERTY_GRPC_PHONE_STATE_STREAM_ENABLED = "grpc_phone_state_stream_enabled";
+    public static final String PROPERTY_GRPC_WIFI_STREAM_ENABLED = "grpc_wifi_stream_enabled";
+    public static final String PROPERTY_GRPC_BLUETOOTH_STREAM_ENABLED = "grpc_bluetooth_stream_enabled";
+    public static final String PROPERTY_GRPC_GNSS_STREAM_ENABLED = "grpc_gnss_stream_enabled";
+    public static final String PROPERTY_GRPC_DEVICE_STATUS_STREAM_ENABLED = "grpc_device_status_stream_enabled";
 
     // Stored Preferences not exposed via the Settings UI
     public static final String PROPERTY_NETWORK_SURVEY_CONNECTION_HOST = "connection_host";
@@ -130,4 +174,5 @@ public class NetworkSurveyConstants
     public static final String PROPERTY_WIFI_NETWORKS_SORT_ORDER = "wifi_networks_sort_order";
     public static final String PROPERTY_BLUETOOTH_DEVICES_SORT_ORDER = "bluetooth_devices_sort_order";
     public static final String PROPERTY_KEY_ACCEPT_MAP_PRIVACY = "accepted_map_privacy";
+    public static final String PROPERTY_KEY_DENIED_BACKGROUND_LOCATION_PERMISSION = "denied_background_location_permission";
 }

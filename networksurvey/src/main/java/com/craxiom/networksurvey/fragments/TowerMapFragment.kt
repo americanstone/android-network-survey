@@ -1,23 +1,25 @@
 package com.craxiom.networksurvey.fragments
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.core.view.MenuProvider
+import androidx.compose.ui.unit.dp
+import androidx.core.location.LocationManagerCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
-import com.craxiom.networksurvey.R
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.craxiom.networksurvey.SimChangeReceiver
 import com.craxiom.networksurvey.listeners.ICellularSurveyRecordListener
 import com.craxiom.networksurvey.model.CellularProtocol
 import com.craxiom.networksurvey.model.CellularRecordWrapper
@@ -25,27 +27,48 @@ import com.craxiom.networksurvey.services.NetworkSurveyService
 import com.craxiom.networksurvey.ui.cellular.TowerMapScreen
 import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo
 import com.craxiom.networksurvey.ui.cellular.model.TowerMapViewModel
-import com.craxiom.networksurvey.util.NsTheme
+import com.craxiom.networksurvey.ui.main.SharedViewModel
+import com.craxiom.networksurvey.ui.theme.NsTheme
 import com.craxiom.networksurvey.util.PreferenceUtils
+import timber.log.Timber
 import java.util.Collections
 
 /**
  * A map view of all the towers in the area as pulled from the NS Tower Service.
  */
-class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRecordListener {
-    private lateinit var viewModel: TowerMapViewModel
+class TowerMapFragment : AServiceDataFragment(), ICellularSurveyRecordListener {
+    private var viewModel: TowerMapViewModel? = null
     private lateinit var composeView: ComposeView
-    private lateinit var servingCell: ServingCellInfo
+    private var paddingValues: PaddingValues = PaddingValues(2.dp, 2.dp, 2.dp, 2.dp)
+    private var servingCell: ServingCellInfo? = null
     private var locationListener: LocationListener? = null
+    private var simBroadcastReceiver = object : BroadcastReceiver(
+    ) {
+        override fun onReceive(context: Context, intent: Intent) {
+            Timber.i("SIM State Change Detected. Updating the tower map view model")
+            viewModel?.resetSimCount()
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val context = context
+        if (context != null) {
+            LocalBroadcastManager.getInstance(context).registerReceiver(
+                simBroadcastReceiver,
+                IntentFilter(SimChangeReceiver.SIM_CHANGED_INTENT)
+            )
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val args: TowerMapFragmentArgs by navArgs()
-        servingCell = args.servingCell
-        activity?.addMenuProvider(this, getViewLifecycleOwner())
+        val viewModel = ViewModelProvider(requireActivity())[SharedViewModel::class.java]
+        servingCell = viewModel.latestServingCellInfo
 
         composeView = ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -61,29 +84,29 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
     override fun onResume() {
         super.onResume()
 
-        checkAcceptedMapPrivacy()
-        checkLocationServicesEnabled()
+        if (PreferenceUtils.hasAcceptedMapPrivacy(requireContext())) {
+            setupComposeView(servingCell)
+            viewModel?.mapView?.onResume()
+        }
 
-        viewModel.mapView.onResume()
+        checkAcceptedMapPrivacy()
+        checkLocationServicesEnabledAndPrompt()
 
         startAndBindToService()
     }
 
     override fun onPause() {
-        viewModel.mapView.onPause()
+        viewModel?.mapView?.onPause()
         super.onPause()
     }
 
-    override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-        menuInflater.inflate(R.menu.cellular_map_menu, menu)
-    }
-
-    override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-        if (menuItem.itemId == R.id.action_open_tower_map_info) {
-            showTowerMapInfoDialog()
-            return true
+    override fun onDestroy() {
+        val context = context
+        if (context != null) {
+            LocalBroadcastManager.getInstance(context).unregisterReceiver(simBroadcastReceiver)
         }
-        return false
+
+        super.onDestroy()
     }
 
     override fun onSurveyServiceConnected(service: NetworkSurveyService?) {
@@ -93,13 +116,17 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
         var removeListener = false
         val initialLocation = service.primaryLocationListener?.latestLocation
         initialLocation?.let {
-            removeListener = viewModel.updateLocation(it)
-
+            if (viewModel == null) {
+                removeListener = false
+            } else {
+                removeListener = viewModel!!.setMapCenterLocation(it)
+            }
         }
 
         if (!removeListener) {
             locationListener = LocationListener { location ->
-                removeListener = viewModel.updateLocation(location)
+                if (viewModel == null) return@LocationListener
+                removeListener = viewModel!!.setMapCenterLocation(location)
                 if (removeListener) service.unregisterLocationListener(locationListener)
             }
             service.registerLocationListener(locationListener)
@@ -118,10 +145,14 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
     }
 
     override fun onCellularBatch(
-        cellularGroup: MutableList<CellularRecordWrapper>?,
+        cellularGroup: MutableList<CellularRecordWrapper?>?,
         subscriptionId: Int
     ) {
-        viewModel.onCellularBatchResults(cellularGroup, subscriptionId)
+        viewModel?.onCellularBatchResults(cellularGroup, subscriptionId)
+    }
+
+    fun setPaddingInsets(paddingInsets: PaddingValues) {
+        paddingValues = paddingInsets
     }
 
     /**
@@ -155,7 +186,7 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
         builder.setNegativeButton("Reject") { dialog, _ ->
             PreferenceUtils.setAcceptMapPrivacy(requireContext(), false)
             dialog.dismiss()
-            findNavController().popBackStack() // Go back to the previous fragment
+            navigateBack()
         }
         builder.show()
     }
@@ -164,13 +195,10 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
      * Checks if the location services are enabled on the device. If they are not, then a dialog is shown to the user
      * explaining that they need to enable location services for a better experience.
      */
-    private fun checkLocationServicesEnabled() {
+    private fun checkLocationServicesEnabledAndPrompt() {
         val locationManager =
             requireContext().getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val isLocationEnabled =
-            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
-                LocationManager.NETWORK_PROVIDER
-            )
+        val isLocationEnabled = LocationManagerCompat.isLocationEnabled(locationManager)
 
         if (!isLocationEnabled) {
             AlertDialog.Builder(requireContext())
@@ -181,40 +209,34 @@ class TowerMapFragment : AServiceDataFragment(), MenuProvider, ICellularSurveyRe
         }
     }
 
-    private fun setupComposeView(servingCell: ServingCellInfo) {
+    private fun setupComposeView(servingCell: ServingCellInfo?) {
         composeView.setContent {
             viewModel = viewModel()
-            viewModel.servingCellInfo = servingCell
-            if (servingCell.servingCell != null && servingCell.servingCell.cellularProtocol != CellularProtocol.NONE) {
-                viewModel.setSelectedRadioType(servingCell.servingCell.cellularProtocol.name)
+            viewModel!!.setPaddingInsets(paddingValues)
+            if (servingCell?.servingCell != null) {
+                if (servingCell.servingCell.cellularProtocol != CellularProtocol.NONE) {
+                    viewModel!!.setSelectedRadioType(servingCell.servingCell.cellularProtocol.name)
+                }
+                val plmn = servingCell.servingCell.plmn
+                if (plmn != null) {
+                    viewModel!!.setPlmnFilter(plmn)
+                }
             }
 
             NsTheme {
-                TowerMapScreen(viewModel = viewModel)
+                TowerMapScreen(viewModel = viewModel!!, onBackButtonPressed = ::navigateBack)
             }
 
-            onCellularBatch(
-                Collections.singletonList(servingCell.servingCell),
-                servingCell.subscriptionId
-            )
+            if (servingCell != null)
+                onCellularBatch(
+                    Collections.singletonList(servingCell.servingCell),
+                    servingCell.subscriptionId
+                )
         }
     }
 
-    /**
-     * Shows a dialog to the user explaining where the tower map data comes from and some nuances of it.
-     */
-    private fun showTowerMapInfoDialog() {
-        val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle("Tower Map Information")
-        builder.setMessage(
-            """
-            The tower locations are sourced from OpenCelliD.
-            Please note that these locations may not be accurate as they are generated from crowd-sourced data and based on survey results.
-            The tower locations are provided for your convenience, but they should not be relied upon for precise accuracy.
-            We recommend verifying tower locations through additional sources if accuracy is critical.
-        """.trimIndent()
-        )
-        builder.setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
-        builder.show()
+    private fun navigateBack() {
+        val nsActivity = activity ?: return
+        nsActivity.onBackPressed()
     }
 }

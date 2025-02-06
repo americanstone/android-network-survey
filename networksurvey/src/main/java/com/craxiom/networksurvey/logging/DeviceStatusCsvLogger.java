@@ -1,5 +1,6 @@
 package com.craxiom.networksurvey.logging;
 
+import static com.craxiom.networksurvey.constants.csv.CsvConstants.DEVICE_SERIAL_NUMBER;
 import static com.craxiom.networksurvey.constants.csv.DeviceStatusCsvConstants.ACCURACY;
 import static com.craxiom.networksurvey.constants.csv.DeviceStatusCsvConstants.ALTITUDE;
 import static com.craxiom.networksurvey.constants.csv.DeviceStatusCsvConstants.BATTERY_LEVEL_PERCENT;
@@ -44,13 +45,14 @@ public class DeviceStatusCsvLogger extends CsvRecordLogger implements IDeviceSta
     {
         return new String[]{DEVICE_TIME, LATITUDE, LONGITUDE, ALTITUDE, SPEED, ACCURACY,
                 BATTERY_LEVEL_PERCENT, GNSS_LATITUDE, GNSS_LONGITUDE, GNSS_ALTITUDE, GNSS_ACCURACY,
-                NETWORK_LATITUDE, NETWORK_LONGITUDE, NETWORK_ALTITUDE, NETWORK_ACCURACY,};
+                NETWORK_LATITUDE, NETWORK_LONGITUDE, NETWORK_ALTITUDE, NETWORK_ACCURACY,
+                DEVICE_SERIAL_NUMBER};
     }
 
     @Override
     String[] getHeaderComments()
     {
-        return new String[]{"CSV Version=0.2.0"};
+        return new String[]{"CSV Version=0.3.0"};
     }
 
     @Override
@@ -84,22 +86,23 @@ public class DeviceStatusCsvLogger extends CsvRecordLogger implements IDeviceSta
 
         return new String[]{
                 data.getDeviceTime(),
-                String.valueOf(data.getLatitude()),
-                String.valueOf(data.getLongitude()),
-                String.valueOf(data.getAltitude()),
-                String.valueOf(data.getSpeed()),
-                String.valueOf(data.getAccuracy()),
-                data.hasBatteryLevelPercent() ? String.valueOf(data.getBatteryLevelPercent()) : "",
+                trimToSixDecimalPlaces(data.getLatitude()),
+                trimToSixDecimalPlaces(data.getLongitude()),
+                roundToTwoDecimalPlaces(data.getAltitude()),
+                roundToTwoDecimalPlaces(data.getSpeed()),
+                roundToTwoDecimalPlaces(data.getAccuracy()),
+                data.hasBatteryLevelPercent() ? String.valueOf(data.getBatteryLevelPercent().getValue()) : "",
 
-                hasGnssLocation ? String.valueOf(gnssLatitude) : "",
-                hasGnssLocation ? String.valueOf(gnssLongitude) : "",
-                hasGnssLocation ? String.valueOf(data.getGnssAltitude()) : "",
-                hasGnssLocation ? String.valueOf(data.getGnssAccuracy()) : "",
+                hasGnssLocation ? trimToSixDecimalPlaces(gnssLatitude) : "",
+                hasGnssLocation ? trimToSixDecimalPlaces(gnssLongitude) : "",
+                hasGnssLocation ? roundToTwoDecimalPlaces(data.getGnssAltitude()) : "",
+                hasGnssLocation ? roundToTwoDecimalPlaces(data.getGnssAccuracy()) : "",
 
-                hasNetworkLocation ? String.valueOf(networkLatitude) : "",
-                hasNetworkLocation ? String.valueOf(networkLongitude) : "",
-                hasNetworkLocation ? String.valueOf(data.getNetworkAltitude()) : "",
-                hasNetworkLocation ? String.valueOf(data.getNetworkAccuracy()) : "",
+                hasNetworkLocation ? trimToSixDecimalPlaces(networkLatitude) : "",
+                hasNetworkLocation ? trimToSixDecimalPlaces(networkLongitude) : "",
+                hasNetworkLocation ? roundToTwoDecimalPlaces(data.getNetworkAltitude()) : "",
+                hasNetworkLocation ? roundToTwoDecimalPlaces(data.getNetworkAccuracy()) : "",
+                data.getDeviceSerialNumber()
         };
     }
 }

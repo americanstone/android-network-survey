@@ -6,65 +6,65 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.app.TaskStackBuilder;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.location.Location;
+import android.content.pm.ServiceInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.BatteryManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
-import androidx.navigation.NavDeepLinkBuilder;
 
+import com.craxiom.messaging.BluetoothRecord;
 import com.craxiom.messaging.CdmaRecord;
 import com.craxiom.messaging.DeviceStatus;
-import com.craxiom.messaging.DeviceStatusData;
+import com.craxiom.messaging.GnssRecord;
 import com.craxiom.messaging.GsmRecord;
 import com.craxiom.messaging.LteRecord;
 import com.craxiom.messaging.NrRecord;
 import com.craxiom.messaging.PhoneState;
 import com.craxiom.messaging.UmtsRecord;
 import com.craxiom.messaging.WifiBeaconRecord;
+import com.craxiom.messaging.grpc.BluetoothSurveyResponse;
 import com.craxiom.messaging.grpc.CdmaSurveyResponse;
 import com.craxiom.messaging.grpc.ConnectionHandshakeGrpc;
 import com.craxiom.messaging.grpc.ConnectionReply;
 import com.craxiom.messaging.grpc.ConnectionRequest;
 import com.craxiom.messaging.grpc.DeviceStatusGrpc;
+import com.craxiom.messaging.grpc.GnssSurveyResponse;
 import com.craxiom.messaging.grpc.GsmSurveyResponse;
 import com.craxiom.messaging.grpc.LteSurveyResponse;
 import com.craxiom.messaging.grpc.NrSurveyResponse;
+import com.craxiom.messaging.grpc.PhoneStateResponse;
 import com.craxiom.messaging.grpc.StatusUpdateReply;
 import com.craxiom.messaging.grpc.UmtsSurveyResponse;
 import com.craxiom.messaging.grpc.WifiBeaconSurveyResponse;
 import com.craxiom.messaging.grpc.WirelessSurveyGrpc;
 import com.craxiom.mqttlibrary.IConnectionStateListener;
 import com.craxiom.mqttlibrary.connection.ConnectionState;
-import com.craxiom.networksurvey.BuildConfig;
-import com.craxiom.networksurvey.GpsListener;
+import com.craxiom.networksurvey.NetworkSurveyActivity;
 import com.craxiom.networksurvey.R;
-import com.craxiom.networksurvey.constants.DeviceStatusMessageConstants;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
+import com.craxiom.networksurvey.fragments.model.GrpcConnectionSettings;
+import com.craxiom.networksurvey.listeners.IBluetoothSurveyRecordListener;
 import com.craxiom.networksurvey.listeners.ICellularSurveyRecordListener;
 import com.craxiom.networksurvey.listeners.IDeviceStatusListener;
+import com.craxiom.networksurvey.listeners.IGnssSurveyRecordListener;
 import com.craxiom.networksurvey.listeners.IWifiSurveyRecordListener;
 import com.craxiom.networksurvey.messaging.NetworkSurveyStatusGrpc;
 import com.craxiom.networksurvey.model.WifiRecordWrapper;
-import com.craxiom.networksurvey.util.IOUtils;
 import com.craxiom.networksurvey.util.LegacyRecordConversion;
-import com.craxiom.networksurvey.util.MathUtils;
-import com.google.protobuf.Int32Value;
 
 import java.lang.ref.WeakReference;
 import java.net.ConnectException;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -72,7 +72,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -88,12 +87,13 @@ import timber.log.Timber;
  *
  * @since 0.0.9
  */
-public class GrpcConnectionService extends Service implements IDeviceStatusListener, ICellularSurveyRecordListener, IWifiSurveyRecordListener
+public class GrpcConnectionService extends Service implements IDeviceStatusListener, ICellularSurveyRecordListener,
+        IWifiSurveyRecordListener, IBluetoothSurveyRecordListener, IGnssSurveyRecordListener
 {
     public static final long RECONNECTION_ATTEMPT_BACKOFF_TIME = 10_000L;
     private static final int DEVICE_STATUS_REFRESH_RATE_MS = 15_000;
     // number of concurrent linked queues. Does not take into account the old queues
-    private static final int NUMBER_OF_QUEUES_TO_PROCESS = 7;
+    private static final int NUMBER_OF_QUEUES_TO_PROCESS = 10;
     private static final int QUEUE_PROCESSING_SLEEP_TIME = 1_000;
 
     private static ConnectionState connectionState = ConnectionState.DISCONNECTED;
@@ -109,17 +109,18 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
     private final Handler uiThreadHandler;
     private final SurveyServiceConnection surveyServiceConnection;
     private NetworkSurveyService networkSurveyService;
-    private GpsListener gpsListener;
-
     private final ScheduledExecutorService executorService;
 
     private final ConcurrentLinkedQueue<DeviceStatus> deviceStatusQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<PhoneState> phoneStateQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<GsmRecord> gsmRecordQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<CdmaRecord> cdmaRecordQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<UmtsRecord> umtsRecordQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<LteRecord> lteRecordQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<NrRecord> nrRecordQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<WifiBeaconRecord> wifiBeaconRecordQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<BluetoothRecord> bluetoothRecordQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<GnssRecord> gnssRecordQueue = new ConcurrentLinkedQueue<>();
 
     private final List<IConnectionStateListener> grpcConnectionListeners = new CopyOnWriteArrayList<>();
 
@@ -137,14 +138,16 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
 
     // New connection approach
     private GrpcTask<DeviceStatus, StatusUpdateReply> deviceStatusGrpcTask;
+    private GrpcTask<PhoneState, PhoneStateResponse> phoneStateGrpcTask;
     private GrpcTask<GsmRecord, GsmSurveyResponse> gsmRecordGrpcTask;
     private GrpcTask<CdmaRecord, CdmaSurveyResponse> cdmaRecordGrpcTask;
     private GrpcTask<UmtsRecord, UmtsSurveyResponse> umtsRecordGrpcTask;
     private GrpcTask<LteRecord, LteSurveyResponse> lteRecordGrpcTask;
     private GrpcTask<NrRecord, NrSurveyResponse> nrRecordGrpcTask;
     private GrpcTask<WifiBeaconRecord, WifiBeaconSurveyResponse> wifiBeaconRecordGrpcTask;
+    private GrpcTask<BluetoothRecord, BluetoothSurveyResponse> bluetoothRecordGrpcTask;
+    private GrpcTask<GnssRecord, GnssSurveyResponse> gnssRecordGrpcTask;
     private ManagedChannel channel;
-    private final AtomicInteger deviceStatusGeneratorTaskId = new AtomicInteger();
 
     /**
      * It is sometimes hard to know if we should attempt a reconnect to the remote gRPC server based on the gRPC
@@ -156,8 +159,12 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
     private String host = null;
     private Integer portNumber = null;
     private String deviceName = "";
-    private String deviceId = "";
-    private Handler deviceStatusReportHandler;
+    private boolean cellularStreamEnabled = false;
+    private boolean phoneStateStreamEnabled = false;
+    private boolean wifiStreamEnabled = false;
+    private boolean bluetoothStreamEnabled = false;
+    private boolean gnssStreamEnabled = false;
+    private boolean deviceStatusStreamEnabled = false;
 
     /**
      * To support both the new and old gRPC connections, we keep track of if we were able to use the newer connection
@@ -197,21 +204,24 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
      * Starts this service to connect to a remote gRPC server with the given parameters. If
      * the service is already performing a task this action will be queued.
      *
-     * @param context    The context to use to create the service intent.
-     * @param host       The Host Name or IP Address of the remote gRPC server.
-     * @param port       The Port Number of the gRPC server.
-     * @param deviceName The name that represents this device to the gRPC server.
-     * @see IntentService
+     * @param context            The context to use to create the service intent.
+     * @param connectionSettings The connection settings to use to connect to the gRPC server.
      */
-    public static void connectToGrpcServer(Context context, String host, int port, String deviceName)
+    public static void connectToGrpcServer(Context context, GrpcConnectionSettings connectionSettings)
     {
         Timber.d("Creating the ACTION_CONNECT intent to kick off the gRPC connection");
 
         Intent intent = new Intent(context, GrpcConnectionService.class);
         intent.setAction(ACTION_CONNECT);
-        intent.putExtra(HOST_PARAMETER, host);
-        intent.putExtra(PORT_PARAMETER, port);
-        intent.putExtra(DEVICE_NAME_PARAMETER, deviceName);
+        intent.putExtra(HOST_PARAMETER, connectionSettings.getHost());
+        intent.putExtra(PORT_PARAMETER, connectionSettings.getPort());
+        intent.putExtra(DEVICE_NAME_PARAMETER, connectionSettings.getDeviceName());
+        intent.putExtra(NetworkSurveyConstants.PROPERTY_GRPC_CELLULAR_STREAM_ENABLED, connectionSettings.getCellularStreamEnabled());
+        intent.putExtra(NetworkSurveyConstants.PROPERTY_GRPC_PHONE_STATE_STREAM_ENABLED, connectionSettings.getPhoneStateStreamEnabled());
+        intent.putExtra(NetworkSurveyConstants.PROPERTY_GRPC_WIFI_STREAM_ENABLED, connectionSettings.getWifiStreamEnabled());
+        intent.putExtra(NetworkSurveyConstants.PROPERTY_GRPC_BLUETOOTH_STREAM_ENABLED, connectionSettings.getBluetoothStreamEnabled());
+        intent.putExtra(NetworkSurveyConstants.PROPERTY_GRPC_GNSS_STREAM_ENABLED, connectionSettings.getGnssStreamEnabled());
+        intent.putExtra(NetworkSurveyConstants.PROPERTY_GRPC_DEVICE_STATUS_STREAM_ENABLED, connectionSettings.getDeviceStatusStreamEnabled());
         context.startService(intent);
     }
 
@@ -233,15 +243,10 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
     {
         super.onCreate();
 
-        HandlerThread deviceStatusReportHandlerThread = new HandlerThread("DeviceStatusThread");
-        deviceStatusReportHandlerThread.start();
-
-        deviceStatusReportHandler = new Handler(deviceStatusReportHandlerThread.getLooper());
-
         // Bind to the survey service
         final Context applicationContext = getApplicationContext();
         final Intent serviceIntent = new Intent(applicationContext, NetworkSurveyService.class);
-        final boolean bound = applicationContext.bindService(serviceIntent, surveyServiceConnection, Context.BIND_ABOVE_CLIENT);
+        final boolean bound = applicationContext.bindService(serviceIntent, surveyServiceConnection, BIND_ABOVE_CLIENT);
         Timber.i("NetworkSurveyService bound in the GrpcConnectionService: %s", bound);
     }
 
@@ -259,13 +264,19 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
                 final String host = intent.getStringExtra(HOST_PARAMETER);
                 final int port = intent.getIntExtra(PORT_PARAMETER, -1);
                 final String deviceName = intent.getStringExtra(DEVICE_NAME_PARAMETER);
+                final boolean cellularStreamEnabled = intent.getBooleanExtra(NetworkSurveyConstants.PROPERTY_GRPC_CELLULAR_STREAM_ENABLED, false);
+                final boolean phoneStateStreamEnabled = intent.getBooleanExtra(NetworkSurveyConstants.PROPERTY_GRPC_PHONE_STATE_STREAM_ENABLED, false);
+                final boolean wifiStreamEnabled = intent.getBooleanExtra(NetworkSurveyConstants.PROPERTY_GRPC_WIFI_STREAM_ENABLED, false);
+                final boolean bluetoothStreamEnabled = intent.getBooleanExtra(NetworkSurveyConstants.PROPERTY_GRPC_BLUETOOTH_STREAM_ENABLED, false);
+                final boolean gnssStreamEnabled = intent.getBooleanExtra(NetworkSurveyConstants.PROPERTY_GRPC_GNSS_STREAM_ENABLED, false);
+                final boolean deviceStatusStreamEnabled = intent.getBooleanExtra(NetworkSurveyConstants.PROPERTY_GRPC_DEVICE_STATUS_STREAM_ENABLED, false);
                 if (host == null || port == -1 || deviceName == null)
                 {
                     Timber.e("A valid hostname (%s) and port (%d) is required to connect to a gRPC server", host, port);
                 } else
                 {
                     userCanceled = false;
-                    connectToGrpcServer(host, port, deviceName, false);
+                    connectToGrpcServer(host, port, deviceName, false, cellularStreamEnabled, phoneStateStreamEnabled, wifiStreamEnabled, bluetoothStreamEnabled, gnssStreamEnabled, deviceStatusStreamEnabled);
                 }
             } else if (ACTION_DISCONNECT.equals(action))
             {
@@ -293,12 +304,6 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
             getApplicationContext().unbindService(surveyServiceConnection);
         }
 
-        if (deviceStatusReportHandler != null)
-        {
-            deviceStatusReportHandler.getLooper().quitSafely();
-            deviceStatusReportHandler = null;
-        }
-
         disconnectFromGrpcServer(true);
 
         super.onDestroy();
@@ -322,7 +327,10 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
     @Override
     public void onPhoneState(PhoneState phoneState)
     {
-        // No-op... for now
+        if (isConnected() && phoneState != null && phoneStateGrpcTask != null && phoneStateGrpcTask.getStatus() != AsyncTask.Status.FINISHED)
+        {
+            phoneStateQueue.add(phoneState);
+        }
     }
 
     @Override
@@ -388,7 +396,7 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
     @Override
     public void onNrSurveyRecord(NrRecord nrRecord)
     {
-        if (isConnected() && nrRecord != null && nrRecordGrpcTask.getStatus() != AsyncTask.Status.FINISHED)
+        if (isConnected() && nrRecord != null && nrRecordGrpcTask != null && nrRecordGrpcTask.getStatus() != AsyncTask.Status.FINISHED)
         {
             nrRecordQueue.add(nrRecord);
         }
@@ -401,6 +409,33 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
         {
             wifiBeaconRecordQueue.addAll(
                     wifiBeaconRecords.stream().map(WifiRecordWrapper::getWifiBeaconRecord).collect(Collectors.toList()));
+        }
+    }
+
+    @Override
+    public void onBluetoothSurveyRecord(BluetoothRecord bluetoothRecord)
+    {
+        if (isConnected() && bluetoothRecordGrpcTask != null && bluetoothRecordGrpcTask.getStatus() != AsyncTask.Status.FINISHED)
+        {
+            bluetoothRecordQueue.add(bluetoothRecord);
+        }
+    }
+
+    @Override
+    public void onBluetoothSurveyRecords(List<BluetoothRecord> bluetoothRecords)
+    {
+        if (isConnected() && bluetoothRecordGrpcTask != null && bluetoothRecordGrpcTask.getStatus() != AsyncTask.Status.FINISHED)
+        {
+            bluetoothRecordQueue.addAll(bluetoothRecords);
+        }
+    }
+
+    @Override
+    public void onGnssSurveyRecord(GnssRecord gnssRecord)
+    {
+        if (isConnected() && gnssRecord != null && gnssRecordGrpcTask != null && gnssRecordGrpcTask.getStatus() != AsyncTask.Status.FINISHED)
+        {
+            gnssRecordQueue.add(gnssRecord);
         }
     }
 
@@ -444,7 +479,10 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
      * @param reconnectOnFailure True if the a reconnection should be performed if the connection fails, false if
      *                           only a single connection attempt should be made.
      */
-    private void connectToGrpcServer(String host, int port, String deviceName, boolean reconnectOnFailure)
+    private void connectToGrpcServer(String host, int port, String deviceName, boolean reconnectOnFailure,
+                                     boolean cellularStreamEnabled, boolean phoneStateStreamEnabled,
+                                     boolean wifiStreamEnabled, boolean bluetoothStreamEnabled,
+                                     boolean gnssStreamEnabled, boolean deviceStatusStreamEnabled)
     {
         try
         {
@@ -453,9 +491,14 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
             this.host = host;
             portNumber = port;
             this.deviceName = deviceName;
+            this.cellularStreamEnabled = cellularStreamEnabled;
+            this.phoneStateStreamEnabled = phoneStateStreamEnabled;
+            this.wifiStreamEnabled = wifiStreamEnabled;
+            this.bluetoothStreamEnabled = bluetoothStreamEnabled;
+            this.gnssStreamEnabled = gnssStreamEnabled;
+            this.deviceStatusStreamEnabled = deviceStatusStreamEnabled;
 
             notifyConnectionStateChange(ConnectionState.CONNECTING);
-            initializeDeviceStatusReport(deviceStatusGeneratorTaskId.incrementAndGet());
 
             new Thread(() -> {
                 try
@@ -508,29 +551,69 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
                         oldLteRecordGrpcTask.executeOnExecutor(executorService);
                     } else
                     {
-                        deviceStatusGrpcTask = new GrpcTask<>(this, deviceStatusQueue,
-                                statusUpdateReplyStreamObserver -> DeviceStatusGrpc.newStub(channel).statusUpdate(statusUpdateReplyStreamObserver));
-                        deviceStatusGrpcTask.executeOnExecutor(executorService);
-
                         final WirelessSurveyGrpc.WirelessSurveyStub wirelessSurveyStub = WirelessSurveyGrpc.newStub(channel);
 
-                        gsmRecordGrpcTask = new GrpcTask<>(this, gsmRecordQueue, wirelessSurveyStub::streamGsmSurvey);
-                        gsmRecordGrpcTask.executeOnExecutor(executorService);
+                        if (cellularStreamEnabled)
+                        {
+                            gsmRecordGrpcTask = new GrpcTask<>(this, gsmRecordQueue, wirelessSurveyStub::streamGsmSurvey);
+                            gsmRecordGrpcTask.executeOnExecutor(executorService);
 
-                        cdmaRecordGrpcTask = new GrpcTask<>(this, cdmaRecordQueue, wirelessSurveyStub::streamCdmaSurvey);
-                        cdmaRecordGrpcTask.executeOnExecutor(executorService);
+                            cdmaRecordGrpcTask = new GrpcTask<>(this, cdmaRecordQueue, wirelessSurveyStub::streamCdmaSurvey);
+                            cdmaRecordGrpcTask.executeOnExecutor(executorService);
 
-                        umtsRecordGrpcTask = new GrpcTask<>(this, umtsRecordQueue, wirelessSurveyStub::streamUmtsSurvey);
-                        umtsRecordGrpcTask.executeOnExecutor(executorService);
+                            umtsRecordGrpcTask = new GrpcTask<>(this, umtsRecordQueue, wirelessSurveyStub::streamUmtsSurvey);
+                            umtsRecordGrpcTask.executeOnExecutor(executorService);
 
-                        lteRecordGrpcTask = new GrpcTask<>(this, lteRecordQueue, wirelessSurveyStub::streamLteSurvey);
-                        lteRecordGrpcTask.executeOnExecutor(executorService);
+                            lteRecordGrpcTask = new GrpcTask<>(this, lteRecordQueue, wirelessSurveyStub::streamLteSurvey);
+                            lteRecordGrpcTask.executeOnExecutor(executorService);
 
-                        nrRecordGrpcTask = new GrpcTask<>(this, nrRecordQueue, wirelessSurveyStub::streamNrSurvey);
-                        nrRecordGrpcTask.executeOnExecutor(executorService);
+                            nrRecordGrpcTask = new GrpcTask<>(this, nrRecordQueue, wirelessSurveyStub::streamNrSurvey);
+                            nrRecordGrpcTask.executeOnExecutor(executorService);
 
-                        wifiBeaconRecordGrpcTask = new GrpcTask<>(this, wifiBeaconRecordQueue, wirelessSurveyStub::streamWifiBeaconSurvey);
-                        wifiBeaconRecordGrpcTask.executeOnExecutor(executorService);
+                            networkSurveyService.registerCellularSurveyRecordListener(this);
+                        }
+
+                        if (wifiStreamEnabled)
+                        {
+                            wifiBeaconRecordGrpcTask = new GrpcTask<>(this, wifiBeaconRecordQueue, wirelessSurveyStub::streamWifiBeaconSurvey);
+                            wifiBeaconRecordGrpcTask.executeOnExecutor(executorService);
+
+                            networkSurveyService.registerWifiSurveyRecordListener(this);
+                        }
+
+                        if (bluetoothStreamEnabled)
+                        {
+                            bluetoothRecordGrpcTask = new GrpcTask<>(this, bluetoothRecordQueue, wirelessSurveyStub::streamBluetoothSurvey);
+                            bluetoothRecordGrpcTask.executeOnExecutor(executorService);
+
+                            networkSurveyService.registerBluetoothSurveyRecordListener(this);
+                        }
+
+                        if (gnssStreamEnabled)
+                        {
+                            gnssRecordGrpcTask = new GrpcTask<>(this, gnssRecordQueue, wirelessSurveyStub::streamGnssSurvey);
+                            gnssRecordGrpcTask.executeOnExecutor(executorService);
+
+                            networkSurveyService.registerGnssSurveyRecordListener(this);
+                        }
+
+                        if (deviceStatusStreamEnabled || phoneStateStreamEnabled)
+                        {
+                            if (deviceStatusStreamEnabled)
+                            {
+                                deviceStatusGrpcTask = new GrpcTask<>(this, deviceStatusQueue,
+                                        statusUpdateReplyStreamObserver -> DeviceStatusGrpc.newStub(channel).statusUpdate(statusUpdateReplyStreamObserver));
+                                deviceStatusGrpcTask.executeOnExecutor(executorService);
+                            }
+
+                            if (phoneStateStreamEnabled)
+                            {
+                                phoneStateGrpcTask = new GrpcTask<>(this, phoneStateQueue, wirelessSurveyStub::streamPhoneState);
+                                phoneStateGrpcTask.executeOnExecutor(executorService);
+                            }
+
+                            networkSurveyService.registerDeviceStatusListener(this);
+                        }
                     }
                 } catch (Throwable t)
                 {
@@ -570,6 +653,12 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
     {
         if (stopService) notifyConnectionStateChange(ConnectionState.DISCONNECTING);
 
+        networkSurveyService.unregisterDeviceStatusListener(this);
+        networkSurveyService.unregisterCellularSurveyRecordListener(this);
+        networkSurveyService.unregisterWifiSurveyRecordListener(this);
+        networkSurveyService.unregisterBluetoothSurveyRecordListener(this);
+        networkSurveyService.unregisterGnssSurveyRecordListener(this);
+
         if (oldDeviceStatusGrpcTask != null)
         {
             oldDeviceStatusGrpcTask.cancel(true);
@@ -601,6 +690,11 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
             deviceStatusGrpcTask.cancel(true);
             deviceStatusGrpcTask = null;
         }
+        if (phoneStateGrpcTask != null)
+        {
+            phoneStateGrpcTask.cancel(true);
+            phoneStateGrpcTask = null;
+        }
         if (gsmRecordGrpcTask != null)
         {
             gsmRecordGrpcTask.cancel(true);
@@ -631,6 +725,16 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
             wifiBeaconRecordGrpcTask.cancel(true);
             wifiBeaconRecordGrpcTask = null;
         }
+        if (bluetoothRecordGrpcTask != null)
+        {
+            bluetoothRecordGrpcTask.cancel(true);
+            bluetoothRecordGrpcTask = null;
+        }
+        if (gnssRecordGrpcTask != null)
+        {
+            gnssRecordGrpcTask.cancel(true);
+            gnssRecordGrpcTask = null;
+        }
 
         shutdownChannel(!stopService);
 
@@ -649,7 +753,7 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
         try
         {
             final ConnectionHandshakeGrpc.ConnectionHandshakeBlockingStub blockingStub = ConnectionHandshakeGrpc
-                    .newBlockingStub(channel).withDeadlineAfter(10, TimeUnit.SECONDS); // TODO make the timeout a user preference
+                    .newBlockingStub(channel).withDeadlineAfter(10, TimeUnit.SECONDS);
 
             final ConnectionReply connectionReply = blockingStub.startConnection(ConnectionRequest.newBuilder().build());
 
@@ -686,87 +790,6 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
     }
 
     /**
-     * Initialize the handler that generates a periodic Device Status Message.
-     *
-     * @param taskId The ID of the task that initialized this device report.  It is used to ensure that only one
-     *               device status report handler is running.  If the ID provided here does not match the current ID in
-     *               the service then this handler is stopped.
-     */
-    private void initializeDeviceStatusReport(int taskId)
-    {
-        final int handlerTaskId = taskId;
-
-        deviceStatusReportHandler.postDelayed(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                try
-                {
-                    if (handlerTaskId != deviceStatusGeneratorTaskId.get())
-                    {
-                        Timber.d("Stopping the device status report because the task ID has changed");
-                        return;
-                    }
-
-                    onDeviceStatus(generateDeviceStatus());
-
-                    deviceStatusReportHandler.postDelayed(this, DEVICE_STATUS_REFRESH_RATE_MS);
-                } catch (SecurityException e)
-                {
-                    Timber.e(e, "Could not get the required permissions to generate a device status message");
-                }
-            }
-        }, 1000L);
-    }
-
-    /**
-     * Generate a device status message that can be sent to any remote servers.
-     *
-     * @return A Device Status message that can be sent to a remote server.
-     */
-    private DeviceStatus generateDeviceStatus()
-    {
-        final DeviceStatusData.Builder dataBuilder = DeviceStatusData.newBuilder();
-        dataBuilder.setDeviceSerialNumber(deviceId)
-                .setDeviceName(deviceName)
-                .setDeviceTime(IOUtils.getRfc3339String(ZonedDateTime.now()));
-
-        if (gpsListener != null)
-        {
-            final Location lastKnownLocation = gpsListener.getLatestLocation();
-            if (lastKnownLocation != null)
-            {
-                dataBuilder.setLatitude(lastKnownLocation.getLatitude());
-                dataBuilder.setLongitude(lastKnownLocation.getLongitude());
-                dataBuilder.setAltitude((float) lastKnownLocation.getAltitude());
-                dataBuilder.setAccuracy(MathUtils.roundAccuracy(lastKnownLocation.getAccuracy()));
-                if (lastKnownLocation.hasSpeed())
-                {
-                    dataBuilder.setSpeed(lastKnownLocation.getSpeed());
-                }
-            }
-        }
-
-        final IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        final Intent batteryStatus = registerReceiver(null, intentFilter);
-        if (batteryStatus != null)
-        {
-            int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-            int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-            final float batteryPercent = (level / (float) scale) * 100;
-            dataBuilder.setBatteryLevelPercent(Int32Value.of((int) batteryPercent));
-        }
-
-        final DeviceStatus.Builder statusBuilder = DeviceStatus.newBuilder();
-        statusBuilder.setMessageType(DeviceStatusMessageConstants.DEVICE_STATUS_MESSAGE_TYPE);
-        statusBuilder.setVersion(BuildConfig.MESSAGING_API_VERSION);
-        statusBuilder.setData(dataBuilder);
-
-        return statusBuilder.build();
-    }
-
-    /**
      * Create and add the persistent notification indicating the current connection state to the remote gRPC server.
      * <p>
      * If the connection is disconnected, then the notification is removed.
@@ -782,17 +805,19 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
         {
             Timber.i("Removing the connection notification");
 
-            final NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            final NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             //noinspection ConstantConditions
             notificationManager.cancel(NetworkSurveyConstants.GRPC_CONNECTION_NOTIFICATION_ID);
 
             return;
         }
 
-        PendingIntent pendingIntent = new NavDeepLinkBuilder(this)
-                .setGraph(R.navigation.nav_graph)
-                .setDestination(R.id.connection_fragment)
-                .createPendingIntent();
+        Intent intent = new Intent(this, NetworkSurveyActivity.class);
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("http://craxiom.com/grpc_server_connection"));
+
+        TaskStackBuilder taskStackBuilder = TaskStackBuilder.create(this).addNextIntentWithParentStack(intent);
+        PendingIntent pendingIntent = taskStackBuilder.getPendingIntent(1234, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         final CharSequence notificationText = getNotificationText();
 
@@ -805,7 +830,14 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
                 .setTicker(getText(R.string.connection_notification_title))
                 .build();
 
-        startForeground(NetworkSurveyConstants.GRPC_CONNECTION_NOTIFICATION_ID, notification);
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU)
+        {
+            startForeground(NetworkSurveyConstants.GRPC_CONNECTION_NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+        } else
+        {
+            startForeground(NetworkSurveyConstants.GRPC_CONNECTION_NOTIFICATION_ID, notification);
+        }
     }
 
     /**
@@ -845,7 +877,8 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
 
         Timber.i("Reconnecting to the gRPC server");
 
-        connectToGrpcServer(host, portNumber, deviceName, true);
+        connectToGrpcServer(host, portNumber, deviceName, true, cellularStreamEnabled,
+                phoneStateStreamEnabled, wifiStreamEnabled, bluetoothStreamEnabled, gnssStreamEnabled, deviceStatusStreamEnabled);
     }
 
     /**
@@ -856,9 +889,6 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
      */
     private void shutdownChannel(boolean willReconnect)
     {
-        // Increment the device status task ID so that the handler will stop on the next running
-        deviceStatusGeneratorTaskId.getAndIncrement();
-
         if (channel != null)
         {
             try
@@ -884,8 +914,11 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
     {
         if (networkSurveyService != null)
         {
+            networkSurveyService.unregisterDeviceStatusListener(this);
             networkSurveyService.unregisterCellularSurveyRecordListener(this);
             networkSurveyService.unregisterWifiSurveyRecordListener(this);
+            networkSurveyService.unregisterBluetoothSurveyRecordListener(this);
+            networkSurveyService.unregisterGnssSurveyRecordListener(this);
         }
 
         Timber.i("About to call stopSelf for the GrpcConnectionService");
@@ -1011,7 +1044,7 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
                             continue;
                         }
 
-                        Timber.v("Sending a message to the remote gRPC server: %s", nextMessageToSend);
+                        //Timber.v("Sending a message to the remote gRPC server: %s", nextMessageToSend);
 
                         outgoingMessageStream.onNext(nextMessageToSend);
                     }
@@ -1079,10 +1112,6 @@ public class GrpcConnectionService extends Service implements IDeviceStatusListe
             Timber.i("%s service connected", name);
             final NetworkSurveyService.SurveyServiceBinder binder = (NetworkSurveyService.SurveyServiceBinder) iBinder;
             networkSurveyService = (NetworkSurveyService) binder.getService();
-            deviceId = networkSurveyService.getNsDeviceId();
-            gpsListener = networkSurveyService.getPrimaryLocationListener();
-            networkSurveyService.registerCellularSurveyRecordListener(GrpcConnectionService.this);
-            networkSurveyService.registerWifiSurveyRecordListener(GrpcConnectionService.this);
         }
 
         @Override

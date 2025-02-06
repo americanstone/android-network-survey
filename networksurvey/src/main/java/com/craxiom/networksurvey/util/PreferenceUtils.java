@@ -35,6 +35,7 @@ import androidx.preference.PreferenceManager;
 
 import com.craxiom.mqttlibrary.MqttConstants;
 import com.craxiom.networksurvey.Application;
+import com.craxiom.networksurvey.BuildConfig;
 import com.craxiom.networksurvey.R;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings;
@@ -330,6 +331,43 @@ public class PreferenceUtils
             Timber.e(e, "Could not parse the location provider string: %s", locationProviderString);
             return DEFAULT_LOCATION_PROVIDER;
         }
+    }
+
+    /**
+     * Gets the preference for allowing intent control.
+     * <p>
+     * First, this method tries to pull the MDM provided allow intent control value. If it is not set (either because the device
+     * is not under MDM control, or if that specific value is not set by the MDM administrator) then the value is pulled
+     * from the Android Shared Preferences (aka from the user settings). If it is not set there then the default
+     * value is used.
+     * <p>
+     * The only exception to this sequence is that if the user has toggled the MDM override switch in user settings,
+     * then the user preference value will be used instead of the MDM value.
+     *
+     * @param context The context to use when getting the Shared Preferences and Restriction Manager.
+     * @return True if the app should allow intent control, false otherwise.
+     */
+    public static boolean getAllowIntentControlPreference(Context context)
+    {
+        final RestrictionsManager restrictionsManager = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
+
+        final boolean mdmOverride = PreferenceManager.getDefaultSharedPreferences(context).getBoolean(NetworkSurveyConstants.PROPERTY_MDM_OVERRIDE_KEY, false);
+
+        // First try to use the MDM provided value.
+        if (restrictionsManager != null && !mdmOverride)
+        {
+            final Bundle mdmProperties = restrictionsManager.getApplicationRestrictions();
+
+            if (mdmProperties.containsKey(NetworkSurveyConstants.PROPERTY_ALLOW_INTENT_CONTROL))
+            {
+                return mdmProperties.getBoolean(NetworkSurveyConstants.PROPERTY_ALLOW_INTENT_CONTROL);
+            }
+        }
+
+        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+
+        // Next, try to use the value from user preferences, with a default fallback
+        return preferences.getBoolean(NetworkSurveyConstants.PROPERTY_ALLOW_INTENT_CONTROL, true);
     }
 
     /**
@@ -683,6 +721,26 @@ public class PreferenceUtils
         {
             edit.putString(MqttConstants.PROPERTY_MQTT_TOPIC_PREFIX, mqttConnectionSettings.mqttTopicPrefix());
         }
+        if (mqttConnectionSettings.cellularStreamEnabled() != null)
+        {
+            edit.putBoolean(NetworkSurveyConstants.PROPERTY_MQTT_CELLULAR_STREAM_ENABLED, mqttConnectionSettings.cellularStreamEnabled());
+        }
+        if (mqttConnectionSettings.wifiStreamEnabled() != null)
+        {
+            edit.putBoolean(NetworkSurveyConstants.PROPERTY_MQTT_WIFI_STREAM_ENABLED, mqttConnectionSettings.wifiStreamEnabled());
+        }
+        if (mqttConnectionSettings.bluetoothStreamEnabled() != null)
+        {
+            edit.putBoolean(NetworkSurveyConstants.PROPERTY_MQTT_BLUETOOTH_STREAM_ENABLED, mqttConnectionSettings.bluetoothStreamEnabled());
+        }
+        if (mqttConnectionSettings.gnssStreamEnabled() != null)
+        {
+            edit.putBoolean(NetworkSurveyConstants.PROPERTY_MQTT_GNSS_STREAM_ENABLED, mqttConnectionSettings.gnssStreamEnabled());
+        }
+        if (mqttConnectionSettings.deviceStatusStreamEnabled() != null)
+        {
+            edit.putBoolean(NetworkSurveyConstants.PROPERTY_MQTT_DEVICE_STATUS_STREAM_ENABLED, mqttConnectionSettings.deviceStatusStreamEnabled());
+        }
 
         edit.apply();
     }
@@ -750,5 +808,72 @@ public class PreferenceUtils
     public static void setAcceptMapPrivacy(Context context, boolean hasAccepted)
     {
         PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean(PROPERTY_KEY_ACCEPT_MAP_PRIVACY, hasAccepted).apply();
+    }
+
+    public static boolean hasDeniedBackgroundLocationPermission(Context context)
+    {
+        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(NetworkSurveyConstants.PROPERTY_KEY_DENIED_BACKGROUND_LOCATION_PERMISSION, false);
+    }
+
+    public static void denyBackgroundLocationPermission(Context context)
+    {
+        PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean(NetworkSurveyConstants.PROPERTY_KEY_DENIED_BACKGROUND_LOCATION_PERMISSION, true).apply();
+    }
+
+    public static boolean isUploadEnabled(Context context)
+    {
+        boolean externalDataUploadAllowedForMdm = MdmUtils.isExternalDataUploadAllowed(context);
+        if (!externalDataUploadAllowedForMdm)
+        {
+            return false;
+        }
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return sharedPreferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_ENABLED);
+    }
+
+    public static boolean isApiKeyValid(String apiKey)
+    {
+        // old 8 motions - e.g. "9743a66f914cc249efca164485a19c5c"
+        // new ENAiKOON - guid, e.g. "9743a66f-914c-c249-efca-164485a19c5c"
+        // admin ENAiKOON - there are some custom keys defined by administrators
+        // old Unwired Labs - e.g. "9743a66f914cc2"
+        // new Unwired Labs - e.g. "pk.9743a66f914cc249efca164485a19c5c"
+        return (apiKey.matches("pk\\.[a-fA-F0-9]{32}") || apiKey.matches("[a-fA-F0-9]{14}") || apiKey.matches("[a-fA-F0-9]{32}") || apiKey.matches("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"));
+    }
+
+    public static String getUserOcidApiKey(Context context)
+    {
+        return PreferenceManager.getDefaultSharedPreferences(context).getString(NetworkSurveyConstants.PROPERTY_OCID_API_KEY, "").trim();
+    }
+
+    public static String getSharedApiKey(Context context)
+    {
+        return BuildConfig.OCID_API_KEY;
+    }
+
+    public static boolean isApiKeyShared(String apiKey)
+    {
+        return BuildConfig.OCID_API_KEY.equalsIgnoreCase(apiKey);
+    }
+
+    public static String getOpenCelliDApiKey(Context context, boolean anonymousUploadToOcid)
+    {
+        if (anonymousUploadToOcid)
+        {
+            return getSharedApiKey(context);
+        }
+
+        // Retrieve the user-set API key from preferences
+        String userApiKey = getUserOcidApiKey(context);
+
+        // Check if the user-provided API key is valid
+        if (isApiKeyValid(userApiKey))
+        {
+            return userApiKey;
+        }
+
+        // If not valid or not set, fallback to the shared API key
+        return getSharedApiKey(context);
     }
 }

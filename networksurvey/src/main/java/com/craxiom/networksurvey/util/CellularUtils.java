@@ -1,7 +1,23 @@
 package com.craxiom.networksurvey.util;
 
+import com.craxiom.messaging.CdmaRecord;
+import com.craxiom.messaging.CdmaRecordData;
+import com.craxiom.messaging.GsmRecord;
+import com.craxiom.messaging.GsmRecordData;
+import com.craxiom.messaging.LteRecord;
+import com.craxiom.messaging.LteRecordData;
+import com.craxiom.messaging.NrRecord;
+import com.craxiom.messaging.NrRecordData;
+import com.craxiom.messaging.UmtsRecord;
+import com.craxiom.messaging.UmtsRecordData;
+import com.craxiom.networksurvey.model.CellularProtocol;
+import com.craxiom.networksurvey.model.CellularRecordWrapper;
+import com.craxiom.networksurvey.ui.cellular.Tower;
+import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo;
+import com.craxiom.networksurvey.ui.cellular.model.ServingSignalInfo;
+import com.google.protobuf.BoolValue;
 import com.google.protobuf.Descriptors;
-import com.google.protobuf.GeneratedMessageV3;
+import com.google.protobuf.GeneratedMessage;
 
 /**
  * Helper methods for working with cellular networks.
@@ -105,16 +121,137 @@ public class CellularUtils
     /**
      * @return Returns true if the servingCell field is present and also set to true.
      */
-    public static boolean isServingCell(GeneratedMessageV3 message)
+    public static boolean isServingCell(GeneratedMessage message)
     {
         try
         {
+            // Get the descriptor for the top-level message
             Descriptors.Descriptor descriptor = message.getDescriptorForType();
-            Descriptors.FieldDescriptor field = descriptor.findFieldByName("servingCell");
-            return (boolean) message.getField(field);
+
+            // Get the descriptor for the 'data' field
+            Descriptors.FieldDescriptor dataField = descriptor.findFieldByName("data");
+            if (dataField == null)
+            {
+                return false;
+            }
+
+            // Get the value of the 'data' field
+            GeneratedMessage dataMessage = (GeneratedMessage) message.getField(dataField);
+
+            // Get the descriptor for the 'servingCell' field within the 'data' field
+            Descriptors.Descriptor dataDescriptor = dataMessage.getDescriptorForType();
+            Descriptors.FieldDescriptor servingCellField = dataDescriptor.findFieldByName("servingCell");
+            if (servingCellField == null)
+            {
+                return false;
+            }
+
+            // Get the value of the 'servingCell' field
+            return ((BoolValue) dataMessage.getField(servingCellField)).getValue();
         } catch (Exception e)
         {
             return false;
         }
+    }
+
+    /**
+     * Get the ID used to identify a tower on the map. This is NOT the CGI because I wanted to
+     * include the TAC for LTE and NR, but the CGI doesn't include the TAC.
+     */
+    public static String getTowerId(Tower tower)
+    {
+        if (tower == null)
+        {
+            return "";
+        }
+
+        return "" + tower.getMcc() + tower.getMnc() + tower.getArea() + tower.getCid();
+    }
+
+    /**
+     * Get the ID used to identify a tower on the map. This is NOT the CGI because I wanted to
+     * include the TAC for LTE and NR, but the CGI doesn't include the TAC.
+     *
+     * @param servingCellInfo The ServingCellInfo to get the ID from.
+     * @return The ID, or an empty string if the ServingCellInfo is null or the ServingCell is null.
+     */
+    public static String getTowerId(ServingCellInfo servingCellInfo)
+    {
+        if (servingCellInfo == null)
+        {
+            return "";
+        }
+
+        CellularRecordWrapper cellularRecord = servingCellInfo.getServingCell();
+        if (cellularRecord == null)
+        {
+            return "";
+        }
+
+        switch (cellularRecord.cellularProtocol)
+        {
+            case NONE:
+                return "";
+
+            case GSM:
+                final GsmRecordData gsmData = ((GsmRecord) cellularRecord.cellularRecord).getData();
+                return "" + gsmData.getMcc().getValue() + gsmData.getMnc().getValue() + gsmData.getLac().getValue() + gsmData.getCi().getValue();
+
+            case CDMA:
+                // We don't support CDMA since it is pretty much gone
+                break;
+
+            case UMTS:
+                final UmtsRecordData umtsData = ((UmtsRecord) cellularRecord.cellularRecord).getData();
+                return "" + umtsData.getMcc().getValue() + umtsData.getMnc().getValue() + umtsData.getLac().getValue() + umtsData.getCid().getValue();
+
+            case LTE:
+                final LteRecordData lteData = ((LteRecord) cellularRecord.cellularRecord).getData();
+                return "" + lteData.getMcc().getValue() + lteData.getMnc().getValue() + lteData.getTac().getValue() + lteData.getEci().getValue();
+
+            case NR:
+                final NrRecordData nrData = ((NrRecord) cellularRecord.cellularRecord).getData();
+                return "" + nrData.getMcc().getValue() + nrData.getMnc().getValue() + nrData.getTac().getValue() + nrData.getNci().getValue();
+        }
+
+        return "";
+    }
+
+    public static ServingSignalInfo getSignalInfo(CellularRecordWrapper cellularRecord)
+    {
+        if (cellularRecord == null || cellularRecord.cellularProtocol == null)
+        {
+            return null;
+        }
+
+        return switch (cellularRecord.cellularProtocol)
+        {
+            case NONE -> null;
+            case GSM ->
+            {
+                final GsmRecordData gsmData = ((GsmRecord) cellularRecord.cellularRecord).getData();
+                yield new ServingSignalInfo(CellularProtocol.GSM, (int) gsmData.getSignalStrength().getValue(), -1);
+            }
+            case CDMA ->
+            {
+                final CdmaRecordData cdmaData = ((CdmaRecord) cellularRecord.cellularRecord).getData();
+                yield new ServingSignalInfo(CellularProtocol.CDMA, ((int) cdmaData.getEcio().getValue()), -1);
+            }
+            case UMTS ->
+            {
+                final UmtsRecordData umtsData = ((UmtsRecord) cellularRecord.cellularRecord).getData();
+                yield new ServingSignalInfo(CellularProtocol.UMTS, ((int) umtsData.getSignalStrength().getValue()), (int) umtsData.getRscp().getValue());
+            }
+            case LTE ->
+            {
+                final LteRecordData lteData = ((LteRecord) cellularRecord.cellularRecord).getData();
+                yield new ServingSignalInfo(CellularProtocol.LTE, (int) lteData.getRsrp().getValue(), (int) lteData.getRsrq().getValue());
+            }
+            case NR ->
+            {
+                final NrRecordData nrData = ((NrRecord) cellularRecord.cellularRecord).getData();
+                yield new ServingSignalInfo(CellularProtocol.NR, (int) nrData.getSsRsrp().getValue(), (int) nrData.getSsRsrq().getValue());
+            }
+        };
     }
 }

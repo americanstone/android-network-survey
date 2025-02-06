@@ -215,7 +215,9 @@ fun LteCalculators(viewModel: CalculatorViewModel) {
         // 4G LTE Cell ID calculator
         CardItem {
             Column {
+                val lteSectorIdOutput by viewModel.lteSectorIdOutput.collectAsState()
                 val lteCidError by viewModel.lteCidError.collectAsState()
+                val collectAsState by viewModel.enbIdOutput.collectAsState()
 
                 TitleText(text = "Cell ID to eNB ID and Sector ID")
 
@@ -232,11 +234,11 @@ fun LteCalculators(viewModel: CalculatorViewModel) {
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "eNodeB ID: ${viewModel.enbIdOutput.collectAsState().value}",
+                    "eNodeB ID: $collectAsState",
                     modifier = Modifier.padding(start = 8.dp)
                 )
                 Text(
-                    "Sector ID: ${viewModel.lteSectorIdOutput.collectAsState().value}",
+                    "Sector ID: $lteSectorIdOutput",
                     modifier = Modifier.padding(start = 8.dp)
                 )
 

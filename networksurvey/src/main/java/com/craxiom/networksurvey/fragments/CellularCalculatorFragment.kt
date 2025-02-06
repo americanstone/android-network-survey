@@ -9,7 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.craxiom.networksurvey.ui.cellular.CalculatorScreen
 import com.craxiom.networksurvey.ui.cellular.model.CalculatorViewModel
-import com.craxiom.networksurvey.util.NsTheme
+import com.craxiom.networksurvey.ui.theme.NsTheme
 
 /**
  * The fragment that is responsible for displaying the cellular calculators screen.

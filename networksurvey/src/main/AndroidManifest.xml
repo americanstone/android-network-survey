@@ -8,7 +8,7 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" /> <!-- For the IMEI / MEID -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" /> <!-- For "my" phone number in CDRs -->
     <uses-permission android:name="android.permission.INTERNET" /> <!-- To connect to a remote gRPC server -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /> <!-- To monitor changes to the network state -->
@@ -24,6 +24,7 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> <!-- Needed to start the service at boot -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <uses-feature
         android:name="android.hardware.location.gps"
@@ -68,25 +69,50 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="http" />
+                <data android:host="craxiom.com" />
+                <data android:path="/grpc_server_connection" />
+            </intent-filter>
         </activity>
 
         <service
             android:name=".services.NetworkSurveyService"
             android:description="@string/network_survey_service_description"
-            android:exported="false"
-            android:foregroundServiceType="location" />
+            android:exported="true"
+            android:foregroundServiceType="location">
+            <intent-filter>
+                <action android:name="com.craxiom.networksurvey.START_SURVEY" />
+                <action android:name="com.craxiom.networksurvey.STOP_SURVEY" />
+            </intent-filter>
+        </service>
 
         <service
             android:name=".services.GrpcConnectionService"
             android:description="@string/connection_service_description"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <meta-data
             android:name="android.content.APP_RESTRICTIONS"
             android:resource="@xml/app_restrictions" />
 
-        <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
-        <meta-data android:name="google_analytics_default_allow_ad_personalization_signals" android:value="false" />
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_personalization_signals"
+            android:value="false" />
 
         <receiver
             android:name=".StartAtBootReceiver"
@@ -98,15 +124,6 @@
         </receiver>
 
         <receiver
-            android:name=".CdrSmsReceiver"
-            android:label="CdrSmsReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
             android:name=".SimChangeReceiver"
             android:enabled="true"
             android:exported="true">
@@ -114,6 +131,15 @@
                 <action android:name="android.intent.action.SIM_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".logging.db.uploader.UploadStopReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.craxiom.networksurvey.UPLOADER_STOP" />
+            </intent-filter>
+        </receiver>
+
 
     </application>
 

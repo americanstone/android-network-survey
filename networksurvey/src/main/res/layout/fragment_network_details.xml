@@ -245,58 +245,30 @@
                     android:baselineAligned="false">
 
                     <androidx.constraintlayout.widget.ConstraintLayout
-                        android:id="@+id/mcc_group"
+                        android:id="@+id/plmn_group"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1">
 
                         <TextView
-                            android:id="@+id/mcc"
+                            android:id="@+id/plmn"
                             style="@style/StandardText"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:gravity="center"
-                            app:layout_constraintTop_toTopOf="@id/mcc_group"
-                            app:layout_constraintBottom_toTopOf="@id/mcc_label"
+                            app:layout_constraintTop_toTopOf="@id/plmn_group"
+                            app:layout_constraintBottom_toTopOf="@id/plmn_label"
                             android:textIsSelectable="true"
                             tools:layout_editor_absoluteX="8dp" />
 
                         <TextView
-                            android:id="@+id/mcc_label"
+                            android:id="@+id/plmn_label"
                             style="@style/SmallLabelText"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:gravity="center"
-                            android:text="@string/mcc_label"
-                            app:layout_constraintBottom_toBottomOf="@id/mcc_group" />
-
-                    </androidx.constraintlayout.widget.ConstraintLayout>
-
-                    <androidx.constraintlayout.widget.ConstraintLayout
-                        android:id="@+id/mnc_group"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1">
-
-                        <TextView
-                            android:id="@+id/mnc"
-                            style="@style/StandardText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            app:layout_constraintTop_toTopOf="@id/mnc_group"
-                            app:layout_constraintBottom_toTopOf="@id/mnc_label"
-                            android:textIsSelectable="true"
-                            tools:layout_editor_absoluteX="8dp" />
-
-                        <TextView
-                            android:id="@+id/mnc_label"
-                            style="@style/SmallLabelText"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:text="@string/mnc_label"
-                            app:layout_constraintBottom_toBottomOf="@id/mnc_group" />
+                            android:text="@string/mcc_mnc_label"
+                            app:layout_constraintBottom_toBottomOf="@id/plmn_group" />
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
 

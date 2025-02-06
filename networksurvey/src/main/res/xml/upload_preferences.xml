@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        app:key="general_upload_settings"
+        app:title="@string/settings">
+
+        <SwitchPreferenceCompat
+            app:key="upload_enabled"
+            app:title="Upload Enabled"
+            app:summaryOff="@string/upload_enabled_summary_off"
+            app:summaryOn="@string/upload_enabled_summary_on" />
+
+        <SwitchPreferenceCompat
+            app:key="upload_retry_enabled"
+            app:title="Retry Failed Uploads"
+            app:summary="Automatically retry uploads on failure" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="ocid_settings"
+        app:title="OpenCelliD.org">
+
+        <SwitchPreferenceCompat
+            app:key="upload_to_opencellid"
+            app:title="Upload to OpenCellID"
+            app:summary="Enable or disable uploading to OpenCellID" />
+
+        <SwitchPreferenceCompat
+            app:key="anonymous_opencellid_upload"
+            app:title="Anonymous Contribution"
+            app:summaryOff="The OpenCelliD personal access token will be used"
+            app:summaryOn="The shared access token will be used" />
+
+        <EditTextPreference
+            app:key="ocid_api_key"
+            app:title="OpenCelliD Personal Access Token"
+            app:summary="Enter your OpenCelliD API Key"
+            app:useSimpleSummaryProvider="true"
+            app:dialogTitle="Enter OpenCellID API Key"
+            app:dialogMessage="Leave blank to upload anonymously"
+            android:inputType="textPassword" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="beacondb_settings"
+        app:title="BeaconDB">
+
+        <SwitchPreferenceCompat
+            app:key="upload_to_beacondb"
+            app:title="Upload to BeaconDB"
+            app:summary="Enable or disable uploading to BeaconDB" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

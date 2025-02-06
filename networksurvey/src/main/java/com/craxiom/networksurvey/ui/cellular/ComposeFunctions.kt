@@ -2,17 +2,24 @@
 
 package com.craxiom.networksurvey.ui.cellular
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import com.craxiom.networksurvey.util.CellularTheme
+import androidx.compose.ui.unit.sp
+import com.craxiom.networksurvey.ui.theme.NsTheme
 
 fun setContent(composeView: ComposeView, viewModel: CellularChartViewModel) {
     composeView.apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         setContent {
-            CellularTheme {
+            NsTheme {
                 CellularChartComponent(viewModel = viewModel)
             }
         }
     }
 }
+
+val Int.nonScaledSp
+    @Composable
+    get() = (this / LocalDensity.current.fontScale).sp

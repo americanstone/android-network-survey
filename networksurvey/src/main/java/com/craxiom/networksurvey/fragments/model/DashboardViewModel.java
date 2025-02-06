@@ -18,6 +18,10 @@ import java.util.Objects;
  */
 public class DashboardViewModel extends ViewModel
 {
+    private final MutableLiveData<Boolean> uploadEnabled = new MutableLiveData<>();
+    private final MutableLiveData<Integer> cellularUploadQueueCount = new MutableLiveData<>(-1);
+    private final MutableLiveData<Integer> wifiUploadQueueCount = new MutableLiveData<>(-1);
+
     private final MutableLiveData<Boolean> cellularLoggingEnabled = new MutableLiveData<>();
     private final MutableLiveData<Boolean> wifiLoggingEnabled = new MutableLiveData<>();
     private final MutableLiveData<Boolean> bluetoothLoggingEnabled = new MutableLiveData<>();
@@ -33,6 +37,45 @@ public class DashboardViewModel extends ViewModel
 
     private final MutableLiveData<Location> location = new MutableLiveData<>();
     private final MutableLiveData<Boolean> providerEnabled = new MutableLiveData<>(true);
+
+    public LiveData<Boolean> getUploadEnabled()
+    {
+        return uploadEnabled;
+    }
+
+    public void setUploadEnabled(boolean isEnabled)
+    {
+        if (!Objects.equals(uploadEnabled.getValue(), isEnabled))
+        {
+            uploadEnabled.postValue(isEnabled);
+        }
+    }
+
+    public LiveData<Integer> getCellularUploadQueueCount()
+    {
+        return cellularUploadQueueCount;
+    }
+
+    public void setCellularUploadQueueCount(int count)
+    {
+        if (cellularUploadQueueCount.getValue() != count)
+        {
+            cellularUploadQueueCount.postValue(count);
+        }
+    }
+
+    public LiveData<Integer> getWifiUploadQueueCount()
+    {
+        return wifiUploadQueueCount;
+    }
+
+    public void setWifiUploadQueueCount(int count)
+    {
+        if (wifiUploadQueueCount.getValue() != count)
+        {
+            wifiUploadQueueCount.postValue(count);
+        }
+    }
 
     public LiveData<Boolean> getCellularLoggingEnabled()
     {

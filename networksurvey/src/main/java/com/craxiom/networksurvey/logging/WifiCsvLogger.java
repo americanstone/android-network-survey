@@ -1,5 +1,6 @@
 package com.craxiom.networksurvey.logging;
 
+import static com.craxiom.networksurvey.constants.csv.CsvConstants.DEVICE_SERIAL_NUMBER;
 import static com.craxiom.networksurvey.constants.csv.CsvConstants.SPEED;
 import static com.craxiom.networksurvey.constants.csv.WifiCsvConstants.ACCURACY;
 import static com.craxiom.networksurvey.constants.csv.WifiCsvConstants.AKM_SUITES;
@@ -62,13 +63,14 @@ public class WifiCsvLogger extends CsvRecordLogger implements IWifiSurveyRecordL
                 MISSION_ID, RECORD_NUMBER,
                 SOURCE_ADDRESS, DESTINATION_ADDRESS, BSSID, BEACON_INTERVAL, SERVICE_SET_TYPE, SSID,
                 SUPPORTED_RATES, EXT_SUPPORTED_RATES, CIPHER_SUITES, AKM_SUITES, ENCRYPTION_TYPE,
-                WPA, CHANNEL, FREQ_MHZ, SIGNAL_STRENGTH, SNR, NODE_TYPE, STANDARD, PASSPOINT, BANDWIDTH};
+                WPA, CHANNEL, FREQ_MHZ, SIGNAL_STRENGTH, SNR, NODE_TYPE, STANDARD, PASSPOINT, BANDWIDTH,
+                DEVICE_SERIAL_NUMBER};
     }
 
     @Override
     String[] getHeaderComments()
     {
-        return new String[]{"CSV Version=0.2.0"};
+        return new String[]{"CSV Version=0.3.0"};
     }
 
     @Override
@@ -111,11 +113,11 @@ public class WifiCsvLogger extends CsvRecordLogger implements IWifiSurveyRecordL
 
         return new String[]{
                 data.getDeviceTime(),
-                String.valueOf(data.getLatitude()),
-                String.valueOf(data.getLongitude()),
-                String.valueOf(data.getAltitude()),
-                String.valueOf(data.getSpeed()),
-                String.valueOf(data.getAccuracy()),
+                trimToSixDecimalPlaces(data.getLatitude()),
+                trimToSixDecimalPlaces(data.getLongitude()),
+                roundToTwoDecimalPlaces(data.getAltitude()),
+                roundToTwoDecimalPlaces(data.getSpeed()),
+                roundToTwoDecimalPlaces(data.getAccuracy()),
                 data.getMissionId(),
                 String.valueOf(data.getRecordNumber()),
                 data.getSourceAddress(),
@@ -138,6 +140,7 @@ public class WifiCsvLogger extends CsvRecordLogger implements IWifiSurveyRecordL
                 data.getStandard().toString(),
                 data.hasPasspoint() ? String.valueOf(data.getPasspoint().getValue()) : "",
                 data.getBandwidth().toString(),
+                data.getDeviceSerialNumber()
         };
     }
 }

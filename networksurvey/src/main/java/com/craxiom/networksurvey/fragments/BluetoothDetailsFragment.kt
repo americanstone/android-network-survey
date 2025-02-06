@@ -7,9 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import androidx.preference.PreferenceManager
 import com.craxiom.messaging.BluetoothRecord
 import com.craxiom.messaging.BluetoothRecordData
@@ -20,9 +19,12 @@ import com.craxiom.networksurvey.services.NetworkSurveyService
 import com.craxiom.networksurvey.ui.UNKNOWN_RSSI
 import com.craxiom.networksurvey.ui.bluetooth.BluetoothDetailsScreen
 import com.craxiom.networksurvey.ui.bluetooth.BluetoothDetailsViewModel
-import com.craxiom.networksurvey.util.NsTheme
+import com.craxiom.networksurvey.ui.main.SharedViewModel
+import com.craxiom.networksurvey.ui.theme.NsTheme
 import com.craxiom.networksurvey.util.PreferenceUtils
 import timber.log.Timber
+
+const val BLUETOOTH_DATA_KEY = "bluetoothData"
 
 /**
  * The fragment that displays the details of a single Bluetooth device from the scan results.
@@ -49,9 +51,6 @@ class BluetoothDetailsFragment : AServiceDataFragment(), IBluetoothSurveyRecordL
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val args: BluetoothDetailsFragmentArgs by navArgs()
-        bluetoothData = args.bluetoothData
-
         val composeView = ComposeView(requireContext())
 
         composeView.apply {
@@ -93,7 +92,11 @@ class BluetoothDetailsFragment : AServiceDataFragment(), IBluetoothSurveyRecordL
     }
 
     override fun onPause() {
-        sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferenceChangeListener)
+        try {
+            sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferenceChangeListener)
+        } catch (e: UninitializedPropertyAccessException) {
+            // no-op
+        }
 
         super.onPause()
     }
@@ -142,9 +145,29 @@ class BluetoothDetailsFragment : AServiceDataFragment(), IBluetoothSurveyRecordL
     }
 
     /**
+     * Sets the BluetoothRecordData that this fragment should display. This needs to be called
+     * right after the fragment is created.
+     *
+     * @param bluetoothRecordData The BluetoothRecordData to display.
+     */
+    fun setBluetoothData(bluetoothRecordData: BluetoothRecordData) {
+        this.bluetoothData = bluetoothRecordData
+        // TODO We might need to update the ViewModel with the new BluetoothRecordData if it has already
+        // been initialized
+    }
+
+    /**
      * Navigates to the Settings UI (primarily for the user to change the scan rate)
      */
     fun navigateToSettings() {
-        findNavController().navigate(BluetoothDetailsFragmentDirections.actionBluetoothDetailsToSettings())
+        val nsActivity = activity ?: return
+
+        val viewModel = ViewModelProvider(nsActivity)[SharedViewModel::class.java]
+        viewModel.triggerNavigationToSettings()
+    }
+
+    fun navigateBack() {
+        val nsActivity = activity ?: return
+        nsActivity.onBackPressed()
     }
 }

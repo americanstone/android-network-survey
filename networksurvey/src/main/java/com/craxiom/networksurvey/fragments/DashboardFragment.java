@@ -6,6 +6,7 @@ import static com.craxiom.networksurvey.constants.CdrPermissions.CDR_REQUIRED_PE
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
@@ -14,12 +15,18 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,11 +38,14 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelStoreOwner;
-import androidx.navigation.Navigation;
-import androidx.navigation.fragment.NavHostFragment;
 import androidx.preference.PreferenceManager;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.OutOfQuotaPolicy;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
 
 import com.craxiom.mqttlibrary.IConnectionStateListener;
 import com.craxiom.mqttlibrary.MqttConstants;
@@ -47,13 +57,23 @@ import com.craxiom.networksurvey.databinding.FragmentDashboardBinding;
 import com.craxiom.networksurvey.databinding.MqttStreamItemBinding;
 import com.craxiom.networksurvey.fragments.model.DashboardViewModel;
 import com.craxiom.networksurvey.listeners.ILoggingChangeListener;
+import com.craxiom.networksurvey.logging.db.SurveyDatabase;
+import com.craxiom.networksurvey.logging.db.dao.SurveyRecordDao;
+import com.craxiom.networksurvey.logging.db.uploader.NsUploaderWorker;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.MathUtils;
 import com.craxiom.networksurvey.util.MdmUtils;
+import com.craxiom.networksurvey.util.NsUtils;
+import com.craxiom.networksurvey.util.PreferenceUtils;
 import com.craxiom.networksurvey.util.ToggleLoggingTask;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.common.base.Strings;
 
 import java.text.DecimalFormat;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 
 import timber.log.Timber;
@@ -66,14 +86,28 @@ import timber.log.Timber;
 public class DashboardFragment extends AServiceDataFragment implements LocationListener, IConnectionStateListener,
         ILoggingChangeListener, SharedPreferences.OnSharedPreferenceChangeListener
 {
-    private static final int ACCESS_REQUIRED_PERMISSION_REQUEST_ID = 20;
-    private static final int ACCESS_OPTIONAL_PERMISSION_REQUEST_ID = 21;
+    public static final int ACCESS_REQUIRED_PERMISSION_REQUEST_ID = 20;
+    public static final int ACCESS_OPTIONAL_PERMISSION_REQUEST_ID = 21;
     private static final int ACCESS_BLUETOOTH_PERMISSION_REQUEST_ID = 22;
 
     private final DecimalFormat locationFormat = new DecimalFormat("###.#####");
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     private FragmentDashboardBinding binding;
     private DashboardViewModel viewModel;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable updateUploadCountsRunnable = new Runnable()
+    {
+        @Override
+        public void run()
+        {
+            queryUploadQueueCount();
+
+            // Re-run every 15 seconds as long as the UI is visible
+            handler.postDelayed(this, 15_000);
+        }
+    };
 
     @Nullable
     @Override
@@ -81,15 +115,13 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     {
         binding = FragmentDashboardBinding.inflate(inflater);
 
-        final ViewModelStoreOwner viewModelStoreOwner = NavHostFragment.findNavController(this).getViewModelStoreOwner(R.id.nav_graph);
-        final ViewModelProvider viewModelProvider = new ViewModelProvider(viewModelStoreOwner);
-        viewModel = viewModelProvider.get(getClass().getName(), DashboardViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
 
         initializeLocationTextView();
-
         initializeUiListeners();
-
         initializeObservers();
+        initializeUploadEnabledState();
+        queryUploadQueueCount();
 
         return binding.getRoot();
     }
@@ -104,7 +136,18 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         // instead of recalling the initialize view method each time the fragment is resumed.
         initializeLocationTextView();
 
+        observeUploadWork();
+
         startAndBindToService();
+
+        handler.post(updateUploadCountsRunnable);
+    }
+
+    @Override
+    public void onPause()
+    {
+        handler.removeCallbacks(updateUploadCountsRunnable);
+        super.onPause();
     }
 
     @Override
@@ -196,6 +239,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
     {
+        if (key == null) return;
         switch (key)
         {
             case NetworkSurveyConstants.PROPERTY_MQTT_CELLULAR_STREAM_ENABLED:
@@ -215,6 +259,12 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
      */
     private void initializeUiListeners()
     {
+        initializeLoggingSwitch(binding.uploadEnabledToggleSwitch, (newEnabledState, toggleSwitch) -> viewModel.setUploadEnabled(newEnabledState));
+
+        binding.uploadSettingsButton.setOnClickListener(v -> navigateToUploadSettings());
+        binding.uploadButton.setOnClickListener(v -> showUploadDialog());
+        binding.uploadCancelButton.setOnClickListener(v -> cancelUploads());
+
         initializeLoggingSwitch(binding.cellularLoggingToggleSwitch, (newEnabledState, toggleSwitch) -> {
             viewModel.setCellularLoggingEnabled(newEnabledState);
             toggleCellularLogging(newEnabledState);
@@ -294,24 +344,10 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
 
         binding.mqttFragmentButton.setOnClickListener(c -> navigateToMqttFragment());
 
+        binding.uploadHelpIcon.setOnClickListener(c -> showUploadHelpDialog());
         binding.cdrHelpIcon.setOnClickListener(c -> showCdrHelpDialog());
         binding.fileHelpIcon.setOnClickListener(c -> showFileMqttHelpDialog());
         binding.mqttHelpIcon.setOnClickListener(c -> showFileMqttHelpDialog());
-    }
-
-    private void navigateToMqttFragment()
-    {
-        try
-        {
-            Navigation.findNavController(requireActivity(), getId())
-                    .navigate(DashboardFragmentDirections.actionMainDashboardToMqttConnection());
-        } catch (Exception e)
-        {
-            // It is possible that the user has tried to connect, the snakbar message is displayed,
-            // and then they navigated away from the dashboard fragment and then clicked on the
-            // snackbar "Open" button. In this case we will get an IllegalStateException.
-            Timber.e(e, "Could not navigate to the MQTT Connection fragment");
-        }
     }
 
     /**
@@ -381,7 +417,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
             alertBuilder.setCancelable(true);
             alertBuilder.setTitle(getString(R.string.cdr_required_permissions_rationale_title));
             alertBuilder.setMessage(getText(R.string.cdr_required_permissions_rationale));
-            alertBuilder.setPositiveButton(android.R.string.ok, (dialog, which) -> requestRequiredCdrPermissions());
+            alertBuilder.setPositiveButton(R.string.request, (dialog, which) -> requestRequiredCdrPermissions());
 
             AlertDialog permissionsExplanationDialog = alertBuilder.create();
             permissionsExplanationDialog.show();
@@ -439,6 +475,33 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         {
             ActivityCompat.requestPermissions(getActivity(), CDR_OPTIONAL_PERMISSIONS, ACCESS_OPTIONAL_PERMISSION_REQUEST_ID);
         }
+    }
+
+    /**
+     * Displays a dialog with some information about uploading records.
+     */
+    private void showUploadHelpDialog()
+    {
+        final Context context = getContext();
+        if (context == null) return;
+
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View dialogView = inflater.inflate(R.layout.dialog_upload_help, null);
+        TextView helpTextView = dialogView.findViewById(R.id.tvUploadHelpText);
+        helpTextView.setText(Html.fromHtml(getString(R.string.upload_help), Html.FROM_HTML_MODE_LEGACY));
+        helpTextView.setMovementMethod(LinkMovementMethod.getInstance()); // Enable link clicking
+
+        AlertDialog.Builder alertBuilder = new AlertDialog.Builder(context);
+        alertBuilder.setView(dialogView);
+        alertBuilder.setCancelable(true);
+        alertBuilder.setTitle(getString(R.string.upload_help_title));
+        alertBuilder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+        });
+        alertBuilder.setNeutralButton(R.string.view_manual, (dialog, which) -> {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://networksurvey.app/manual#data-upload"));
+            context.startActivity(browserIntent);
+        });
+        alertBuilder.create().show();
     }
 
     /**
@@ -500,8 +563,13 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     {
         final LifecycleOwner viewLifecycleOwner = getViewLifecycleOwner();
 
+        viewModel.getCellularUploadQueueCount().observe(viewLifecycleOwner, this::updateCellularUploadQueueCountUI);
+        viewModel.getWifiUploadQueueCount().observe(viewLifecycleOwner, this::updateWifiUploadQueueCountUI);
+
         viewModel.getProviderEnabled().observe(viewLifecycleOwner, this::updateLocationProviderStatus);
         viewModel.getLocation().observe(viewLifecycleOwner, this::updateLocationTextView);
+
+        viewModel.getUploadEnabled().observe(viewLifecycleOwner, this::updateUploadEnabledUi);
 
         viewModel.getCellularLoggingEnabled().observe(viewLifecycleOwner, this::updateCellularLogging);
         viewModel.getWifiLoggingEnabled().observe(viewLifecycleOwner, this::updateWifiLogging);
@@ -527,6 +595,8 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         viewModel.getProviderEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getLocation().removeObservers(viewLifecycleOwner);
 
+        viewModel.getUploadEnabled().removeObservers(viewLifecycleOwner);
+
         viewModel.getCellularLoggingEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getWifiLoggingEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getBluetoothLoggingEnabled().removeObservers(viewLifecycleOwner);
@@ -539,6 +609,22 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         viewModel.getBluetoothMqttStreamEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getGnssMqttStreamEnabled().removeObservers(viewLifecycleOwner);
         viewModel.getDeviceStatusMqttStreamEnabled().removeObservers(viewLifecycleOwner);
+    }
+
+    private void initializeUploadEnabledState()
+    {
+        final Context context = getContext();
+        if (context == null) return;
+
+        if (MdmUtils.isExternalDataUploadAllowed(context))
+        {
+            binding.dbLoggingCardView.setVisibility(View.VISIBLE);
+        } else
+        {
+            binding.dbLoggingCardView.setVisibility(View.GONE);
+        }
+
+        viewModel.setUploadEnabled(PreferenceUtils.isUploadEnabled(context));
     }
 
     private synchronized void updateLoggingState(NetworkSurveyService networkSurveyService)
@@ -690,7 +776,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
                     "maybe the dashboard fragment has been removed");
             return;
         }
-        final SharedPreferences preferences = android.preference.PreferenceManager.getDefaultSharedPreferences(context);
+        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
         boolean cellularStreamEnabled = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_MQTT_CELLULAR_STREAM_ENABLED, NetworkSurveyConstants.DEFAULT_MQTT_CELLULAR_STREAM_SETTING);
         viewModel.setCellularMqttStreamEnabled(cellularStreamEnabled);
@@ -934,6 +1020,355 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
 
         locationTextView.setTextColor(getResources().getColor(R.color.connectionStatusConnecting, null));
         locationTextView.setText(enabled ? R.string.searching_for_location : R.string.turn_on_gps);
+    }
+
+    /**
+     * Update the upload card UI so that it reflects the new enabled state.
+     */
+    private void updateUploadEnabledUi(boolean enabled)
+    {
+        final Context context = getContext();
+        if (context == null) return;
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        final SharedPreferences.Editor edit = sharedPreferences.edit();
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_ENABLED, enabled);
+        edit.apply();
+
+        viewModel.setUploadEnabled(enabled);
+        binding.uploadEnabledToggleSwitch.setChecked(enabled);
+
+        if (enabled)
+        {
+            binding.uploadDescriptionGroup.setVisibility(View.GONE);
+            binding.uploadControlGroup.setVisibility(View.VISIBLE);
+        } else
+        {
+            binding.uploadDescriptionGroup.setVisibility(View.VISIBLE);
+            binding.uploadControlGroup.setVisibility(View.GONE);
+        }
+    }
+
+    private void queryUploadQueueCount()
+    {
+        executorService.execute(() -> {
+            SurveyRecordDao surveyRecordDao = SurveyDatabase.getInstance(getContext()).surveyRecordDao();
+            int totalCellularRecordsForUpload = NsUploaderWorker.getTotalCellularRecordsForUpload(surveyRecordDao);
+            viewModel.setCellularUploadQueueCount(totalCellularRecordsForUpload);
+
+            int wifiRecordCountForUpload = surveyRecordDao.getWifiRecordCountForUpload();
+            viewModel.setWifiUploadQueueCount(wifiRecordCountForUpload);
+        });
+    }
+
+    private void updateCellularUploadQueueCountUI(int count)
+    {
+        binding.cellularUploadQueueCount.setText(getString(R.string.cellular_upload_queue_count, count));
+    }
+
+    private void updateWifiUploadQueueCountUI(int count)
+    {
+        binding.wifiUploadQueueCount.setText(getString(R.string.wifi_upload_queue_count, count));
+    }
+
+    private void navigateToMqttFragment()
+    {
+        try
+        {
+            FragmentActivity activity = getActivity();
+            if (activity == null) return;
+
+            SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+            viewModel.triggerNavigationToMqttConnection();
+        } catch (Exception e)
+        {
+            // It is possible that the user has tried to connect, the snackbar message is displayed,
+            // and then they navigated away from the dashboard fragment and then clicked on the
+            // snackbar "Open" button. In this case we will get an IllegalStateException.
+            Timber.e(e, "Could not navigate to the MQTT Connection fragment");
+        }
+    }
+
+    private void navigateToUploadSettings()
+    {
+        try
+        {
+            FragmentActivity activity = getActivity();
+            if (activity == null) return;
+
+            SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+            viewModel.triggerNavigationToUploadSettings();
+        } catch (Exception e)
+        {
+            Timber.e(e, "Could not navigate to the Upload Preferences fragment");
+        }
+    }
+
+    /**
+     * Display the upload dialog to the user, and then handle the upload based on the user's choices.
+     */
+    private void showUploadDialog()
+    {
+        final Context context = getContext();
+        if (context == null) return;
+
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean prefUploadToOpenCellId = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
+        boolean prefAnonymously = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_OPENCELLID);
+        boolean prefUploadToBeaconDb = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, NetworkSurveyConstants.DEFAULT_UPLOAD_TO_BEACONDB);
+        boolean prefRetryUpload = preferences.getBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, NetworkSurveyConstants.DEFAULT_UPLOAD_RETRY_ENABLED);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_upload, null);
+        builder.setView(dialogView);
+
+        CheckBox ocidUploadCheckbox = dialogView.findViewById(R.id.checkOpenCellId);
+        CheckBox anonymousOcidUploadCheckbox = dialogView.findViewById(R.id.checkAnonymously);
+        TextView accessTokenWarningMessage = dialogView.findViewById(R.id.accessTokenWarningMessage);
+        CheckBox beaconDbUploadCheckbox = dialogView.findViewById(R.id.checkBeaconDB);
+        CheckBox retryUploadCheckbox = dialogView.findViewById(R.id.checkRetry);
+
+        ocidUploadCheckbox.setOnCheckedChangeListener((buttonView, uploadToOcid) -> {
+            anonymousOcidUploadCheckbox.setEnabled(uploadToOcid);
+            updateOcidKeyWarningMessage(uploadToOcid, anonymousOcidUploadCheckbox.isChecked(), accessTokenWarningMessage, context);
+        });
+
+        anonymousOcidUploadCheckbox.setOnCheckedChangeListener((buttonView, anonymousOcidUpload) ->
+                updateOcidKeyWarningMessage(ocidUploadCheckbox.isChecked(), anonymousOcidUpload, accessTokenWarningMessage, context));
+
+        ocidUploadCheckbox.setChecked(prefUploadToOpenCellId);
+        anonymousOcidUploadCheckbox.setChecked(prefAnonymously);
+        beaconDbUploadCheckbox.setChecked(prefUploadToBeaconDb);
+        retryUploadCheckbox.setChecked(prefRetryUpload);
+
+        builder.setTitle(getString(R.string.upload_survey_records))
+                .setPositiveButton("Upload", (dialog, which) -> {
+                    boolean uploadToOpenCellId = ocidUploadCheckbox.isChecked();
+                    boolean anonymously = anonymousOcidUploadCheckbox.isChecked();
+                    boolean uploadToBeaconDB = beaconDbUploadCheckbox.isChecked();
+                    boolean enableRetry = retryUploadCheckbox.isChecked();
+
+                    startUploadWorker(uploadToOpenCellId, anonymously, uploadToBeaconDB, enableRetry);
+                })
+                .setNeutralButton(R.string.preferences, (dialog, which) -> navigateToUploadSettings())
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+    private void cancelUploads()
+    {
+        WorkManager workManager = WorkManager.getInstance(requireContext());
+        workManager.cancelAllWorkByTag(NsUploaderWorker.WORKER_TAG);
+    }
+
+    private void updateOcidKeyWarningMessage(boolean uploadToOcid, boolean anonymousOcidUpload, TextView accessTokenWarningMessage, Context context)
+    {
+        if (uploadToOcid && !anonymousOcidUpload)
+        {
+            String userOcidApiKey = PreferenceUtils.getUserOcidApiKey(context);
+            if (!PreferenceUtils.isApiKeyValid(userOcidApiKey))
+            {
+                accessTokenWarningMessage.setVisibility(View.VISIBLE);
+            }
+        } else
+        {
+            accessTokenWarningMessage.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Observes all upload tasks associated with the specific work tag.
+     * Updates UI when an upload is active, ongoing, or finishes.
+     * Logs an error if multiple upload tasks are found (should only be one).
+     */
+    private void observeUploadWork()
+    {
+        Context context = getContext();
+        if (context == null) return;
+
+        WorkManager.getInstance(context)
+                .getWorkInfosByTagLiveData(NsUploaderWorker.WORKER_TAG)
+                .observe(getViewLifecycleOwner(), workInfos -> {
+                    Timber.d("observeUploadWork(): Found %s work tasks with the tag: %s", workInfos.size(), NsUploaderWorker.WORKER_TAG);
+
+                    if (workInfos.size() > 1)
+                    {
+                        Timber.e("observeUploadWork(): Multiple active upload tasks found! Expected only one.");
+                    }
+
+                    boolean hasActiveUpload = false;
+                    UUID activeWorkId = null;
+
+                    for (WorkInfo workInfo : workInfos)
+                    {
+                        if (workInfo.getState() == WorkInfo.State.ENQUEUED || workInfo.getState() == WorkInfo.State.RUNNING)
+                        {
+                            hasActiveUpload = true;
+                            activeWorkId = workInfo.getId();
+                            break; // Stop iterating after finding one active upload
+                        }
+                    }
+
+                    if (hasActiveUpload)
+                    {
+                        showUploadProgress(activeWorkId); // Update UI for the active task
+                    } else
+                    {
+                        binding.uploadProgressGroup.setVisibility(View.GONE);
+                    }
+                });
+    }
+
+    /**
+     * Trigger the upload worker to upload the data to the specified services.
+     */
+    private void startUploadWorker(boolean uploadToOpenCellId, boolean anonymouslyToOpencelliD, boolean uploadToBeaconDB, boolean retry)
+    {
+        final Context context = getContext();
+        if (context == null) return;
+
+        if (!NsUtils.isNetworkAvailable(context))
+        {
+            new android.app.AlertDialog.Builder(context)
+                    .setTitle(R.string.uploader_no_internet_title)
+                    .setMessage(R.string.uploader_no_internet_message)
+                    .setCancelable(true)
+                    .setPositiveButton(R.string.ok, null)
+                    .show();
+            return;
+        }
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        final SharedPreferences.Editor edit = sharedPreferences.edit();
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, uploadToOpenCellId);
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, anonymouslyToOpencelliD);
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, uploadToBeaconDB);
+        edit.putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, retry);
+        edit.apply();
+
+        Data inputData = new Data.Builder()
+                .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_OPENCELLID, uploadToOpenCellId)
+                .putBoolean(NetworkSurveyConstants.PROPERTY_ANONYMOUS_OPENCELLID_UPLOAD, anonymouslyToOpencelliD)
+                .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_TO_BEACONDB, uploadToBeaconDB)
+                .putBoolean(NetworkSurveyConstants.PROPERTY_UPLOAD_RETRY_ENABLED, retry)
+                .build();
+
+        OneTimeWorkRequest uploadWorkRequest = new OneTimeWorkRequest.Builder(NsUploaderWorker.class)
+                .addTag(NsUploaderWorker.WORKER_TAG)
+                .setInputData(inputData)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .build();
+        showUploadProgress(uploadWorkRequest.getId());
+
+        WorkManager.getInstance(context).enqueue(uploadWorkRequest);
+    }
+
+    private void showUploadProgress(UUID workId)
+    {
+        Context context = getContext();
+        if (context == null) return;
+
+        binding.uploadProgressGroup.setVisibility(View.VISIBLE);
+        binding.uploadProgressBar.setProgress(0);
+
+        WorkManager.getInstance(context)
+                .getWorkInfoByIdLiveData(workId)
+                .observe(getViewLifecycleOwner(), new Observer<>()
+                {
+                    private final String innerTag = NetworkSurveyActivity.class.getSimpleName() + "." + NsUploaderWorker.class.getSimpleName();
+
+                    @Override
+                    public void onChanged(WorkInfo workInfo)
+                    {
+                        if (workInfo == null)
+                        {
+                            Timber.tag(innerTag).w("onChanged(): WorkInfo is null");
+                            binding.uploadProgressGroup.setVisibility(View.GONE);
+                            // TODO Display a snackbar, toast, or something else to the user
+                            return;
+                        }
+
+                        Data progress = workInfo.getProgress();
+                        int currentPercent = progress.getInt(NsUploaderWorker.PROGRESS, NsUploaderWorker.PROGRESS_MIN_VALUE);
+                        int maxPercent = progress.getInt(NsUploaderWorker.PROGRESS_MAX, NsUploaderWorker.PROGRESS_MAX_VALUE);
+                        String statusMessage = progress.getString(NsUploaderWorker.PROGRESS_STATUS_MESSAGE);
+                        Timber.tag(innerTag).d("onChanged(): Updating progress: current=%s max=%s", currentPercent, maxPercent);
+                        currentPercent = Math.min(currentPercent, maxPercent);
+                        binding.uploadProgressBar.setProgress(currentPercent);
+                        binding.uploadPercentage.setText(getString(R.string.upload_percentage, currentPercent));
+
+                        if (!Strings.isNullOrEmpty(statusMessage) || workInfo.getState() == WorkInfo.State.ENQUEUED)
+                        {
+                            if (workInfo.getState() == WorkInfo.State.ENQUEUED)
+                            {
+                                statusMessage = getString(R.string.uploader_enqueued);
+                            }
+                            binding.uploadProgressStatus.setVisibility(View.VISIBLE);
+                            binding.uploadProgressStatus.setText(statusMessage);
+                        } else
+                        {
+                            binding.uploadProgressStatus.setVisibility(View.GONE);
+                        }
+
+                        if (workInfo.getState().isFinished())
+                        {
+                            showUploaderFinished(workInfo);
+                        }
+                    }
+                });
+    }
+
+    private void showUploaderFinished(WorkInfo workInfo)
+    {
+        binding.uploadProgressGroup.setVisibility(View.GONE);
+
+        binding.uploadResultsGroup.setVisibility(View.VISIBLE);
+
+        Context context = getContext();
+        if (context == null) return;
+
+        if (workInfo.getState() == WorkInfo.State.CANCELLED)
+        {
+            Toast.makeText(context, R.string.uploader_canceled, Toast.LENGTH_LONG).show();
+            binding.opencellidUploadStatus.setText(R.string.uploader_canceled);
+            binding.opencellidUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_error));
+
+            binding.beacondbUploadStatus.setText(R.string.uploader_canceled);
+            binding.beacondbUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_error));
+        } else
+        {
+            String ocidResult = workInfo.getOutputData().getString(NsUploaderWorker.OCID_RESULT);
+            binding.opencellidUploadStatus.setText(ocidResult);
+            binding.opencellidUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_tertiary));
+
+            String beaconDbResult = workInfo.getOutputData().getString(NsUploaderWorker.BEACONDB_RESULT);
+            binding.beacondbUploadStatus.setText(beaconDbResult);
+            binding.beacondbUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_tertiary));
+
+            String ocidResultMessage = workInfo.getOutputData().getString(NsUploaderWorker.OCID_RESULT_MESSAGE);
+            if (Strings.isNullOrEmpty(ocidResultMessage))
+            {
+                binding.ocidResultMessage.setVisibility(View.GONE);
+            } else
+            {
+                binding.ocidResultMessage.setVisibility(View.VISIBLE);
+            }
+            binding.ocidResultMessage.setText(ocidResultMessage);
+
+            String beaconDbResultMessage = workInfo.getOutputData().getString(NsUploaderWorker.BEACONDB_RESULT_MESSAGE);
+            if (Strings.isNullOrEmpty(beaconDbResultMessage))
+            {
+                binding.beacondbResultMessage.setVisibility(View.GONE);
+            } else
+            {
+                binding.beacondbResultMessage.setVisibility(View.VISIBLE);
+            }
+            binding.beacondbResultMessage.setText(beaconDbResultMessage);
+        }
+
+        WorkManager.getInstance(context).pruneWork();
     }
 
     /**

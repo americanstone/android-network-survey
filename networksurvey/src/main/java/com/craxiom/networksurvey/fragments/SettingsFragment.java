@@ -1,14 +1,26 @@
 package com.craxiom.networksurvey.fragments;
 
+import static com.craxiom.networksurvey.constants.CdrPermissions.CDR_OPTIONAL_PERMISSIONS;
+import static com.craxiom.networksurvey.constants.CdrPermissions.CDR_REQUIRED_PERMISSIONS;
+import static com.craxiom.networksurvey.fragments.DashboardFragment.ACCESS_OPTIONAL_PERMISSION_REQUEST_ID;
+import static com.craxiom.networksurvey.fragments.DashboardFragment.ACCESS_REQUIRED_PERMISSION_REQUEST_ID;
+
 import android.content.Context;
 import android.content.RestrictionsManager;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.InputType;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.DropDownPreference;
 import androidx.preference.EditTextPreference;
+import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceScreen;
@@ -16,6 +28,7 @@ import androidx.preference.SwitchPreferenceCompat;
 
 import com.craxiom.networksurvey.R;
 import com.craxiom.networksurvey.constants.NetworkSurveyConstants;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.craxiom.networksurvey.util.MdmUtils;
 import com.craxiom.networksurvey.util.SettingsUtils;
 
@@ -33,10 +46,11 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     /**
      * The list of preferences that can be set in both the MDM app restrictions, and this settings UI.
      */
-    private static final String[] PROPERTY_KEYS = {NetworkSurveyConstants.PROPERTY_AUTO_START_CELLULAR_LOGGING,
+    public static final String[] MDM_OVERLAP_PROPERTY_KEYS = {NetworkSurveyConstants.PROPERTY_AUTO_START_CELLULAR_LOGGING,
             NetworkSurveyConstants.PROPERTY_AUTO_START_WIFI_LOGGING,
             NetworkSurveyConstants.PROPERTY_AUTO_START_BLUETOOTH_LOGGING,
             NetworkSurveyConstants.PROPERTY_AUTO_START_GNSS_LOGGING,
+            NetworkSurveyConstants.PROPERTY_AUTO_START_CDR_LOGGING,
             NetworkSurveyConstants.PROPERTY_LOG_ROLLOVER_SIZE_MB,
             NetworkSurveyConstants.PROPERTY_LOG_FILE_TYPE,
             NetworkSurveyConstants.PROPERTY_CELLULAR_SCAN_INTERVAL_SECONDS,
@@ -45,7 +59,8 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             NetworkSurveyConstants.PROPERTY_GNSS_SCAN_INTERVAL_SECONDS,
             NetworkSurveyConstants.PROPERTY_DEVICE_STATUS_SCAN_INTERVAL_SECONDS,
             NetworkSurveyConstants.PROPERTY_MQTT_START_ON_BOOT,
-            NetworkSurveyConstants.PROPERTY_LOCATION_PROVIDER};
+            NetworkSurveyConstants.PROPERTY_LOCATION_PROVIDER,
+            NetworkSurveyConstants.PROPERTY_ALLOW_INTENT_CONTROL};
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
@@ -64,12 +79,23 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         setAppInstanceId();
 
         updateUiForMdmIfNecessary();
+
+        final Preference uploadSettings = findPreference(NetworkSurveyConstants.UPLOAD_PREFERENCES_GROUP);
+        if (uploadSettings != null)
+        {
+            uploadSettings.setOnPreferenceClickListener(preference -> {
+                SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+                viewModel.triggerNavigationToUploadSettings();
+                return true;
+            });
+        }
     }
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
     {
         int defaultValue = -1;
+        if (key == null) return;
 
         switch (key)
         {
@@ -81,7 +107,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 if (mdmOverride)
                 {
                     final PreferenceScreen preferenceScreen = getPreferenceScreen();
-                    for (String preferenceKey : PROPERTY_KEYS)
+                    for (String preferenceKey : MDM_OVERLAP_PROPERTY_KEYS)
                     {
                         final Preference preference = preferenceScreen.findPreference(preferenceKey);
                         if (preference != null) preference.setEnabled(true);
@@ -111,6 +137,15 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             case NetworkSurveyConstants.PROPERTY_DEVICE_STATUS_SCAN_INTERVAL_SECONDS:
                 defaultValue = NetworkSurveyConstants.DEFAULT_DEVICE_STATUS_SCAN_INTERVAL_SECONDS;
                 break;
+
+            case NetworkSurveyConstants.PROPERTY_AUTO_START_CDR_LOGGING:
+                final boolean autostartCdr = sharedPreferences.getBoolean(key, false);
+                if (autostartCdr)
+                {
+                    // Verify the app has the necessary permissions to start CDR logging
+                    showCdrPermissionRationaleAndRequestPermissions();
+                }
+                break;
         }
 
         if (defaultValue != -1)
@@ -121,6 +156,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 Integer.parseInt(sharedPreferences.getString(key, ""));
             } catch (Exception e)
             {
+                Timber.e(e, "The new value for %s is not a valid integer. Reverting to the default value of %d", key, defaultValue);
                 final SharedPreferences.Editor edit = sharedPreferences.edit();
                 edit.putString(key, String.valueOf(defaultValue));
                 edit.apply();
@@ -182,13 +218,25 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
      */
     private void updateUiForMdmIfNecessary()
     {
-        if (!MdmUtils.isUnderMdmControl(requireContext(), PROPERTY_KEYS)) return;
+        Context context = requireContext();
+        if (!MdmUtils.isUnderMdmControl(context, MDM_OVERLAP_PROPERTY_KEYS)) return;
 
         final SharedPreferences sharedPreferences = getPreferenceManager().getSharedPreferences();
 
         // Update the UI so that the MDM override is visible, and that some of the settings can't be changed
         final Preference overridePreference = getPreferenceScreen().findPreference(NetworkSurveyConstants.PROPERTY_MDM_OVERRIDE_KEY);
         if (overridePreference != null) overridePreference.setVisible(true);
+
+        // Regardless of MDM override, upload to 3rd party DBs is disabled if MDM disables it
+        if (!MdmUtils.isExternalDataUploadAllowed(context))
+        {
+            Preference preference = findPreference(NetworkSurveyConstants.UPLOAD_PREFERENCES_GROUP);
+            if (preference != null)
+            {
+                preference.setEnabled(false);
+                preference.setSummary(R.string.upload_disabled_via_mdm);
+            }
+        }
 
         final boolean mdmOverride = sharedPreferences.getBoolean(NetworkSurveyConstants.PROPERTY_MDM_OVERRIDE_KEY, false);
 
@@ -199,7 +247,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
 
         final PreferenceScreen preferenceScreen = getPreferenceScreen();
 
-        final RestrictionsManager restrictionsManager = (RestrictionsManager) requireContext().getSystemService(Context.RESTRICTIONS_SERVICE);
+        final RestrictionsManager restrictionsManager = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
         if (restrictionsManager == null) return;
 
         final Bundle mdmProperties = restrictionsManager.getApplicationRestrictions();
@@ -209,15 +257,17 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_AUTO_START_WIFI_LOGGING);
         updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_AUTO_START_BLUETOOTH_LOGGING);
         updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_AUTO_START_GNSS_LOGGING);
+        updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_AUTO_START_CDR_LOGGING);
         updateLogRolloverSizeForMdm(preferenceScreen, mdmProperties);
-        updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_LOG_FILE_TYPE);
+        updateListProviderPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_LOG_FILE_TYPE);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_CELLULAR_SCAN_INTERVAL_SECONDS);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_WIFI_SCAN_INTERVAL_SECONDS);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_BLUETOOTH_SCAN_INTERVAL_SECONDS);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_GNSS_SCAN_INTERVAL_SECONDS);
         updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_DEVICE_STATUS_SCAN_INTERVAL_SECONDS);
         updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_MQTT_START_ON_BOOT);
-        updateIntPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_LOCATION_PROVIDER);
+        updateListProviderPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_LOCATION_PROVIDER);
+        updateBooleanPreferenceForMdm(preferenceScreen, mdmProperties, NetworkSurveyConstants.PROPERTY_ALLOW_INTENT_CONTROL);
     }
 
     /**
@@ -279,6 +329,43 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                     final String mdmValue = String.valueOf(mdmIntProperty);
 
                     preference.setSummaryProvider(pref -> mdmValue);
+
+                    getPreferenceManager().getSharedPreferences()
+                            .edit()
+                            .putString(preferenceKey, String.valueOf(mdmIntProperty))
+                            .apply();
+                }
+            }
+        } catch (Exception e)
+        {
+            Timber.wtf(e, "Could not find the int preference or update the UI component for %s", preferenceKey);
+        }
+    }
+
+    /**
+     * Updates a list preference with an MDM value, if it exists. The shared preferences are
+     * also updated, so that values are retained when MDM control is off.
+     *
+     * @param preferenceScreen The preference screen
+     * @param mdmProperties    The map of mdm provided properties.
+     * @param preferenceKey    The preference key
+     * @since 0.4.0
+     */
+    private void updateListProviderPreferenceForMdm(PreferenceScreen preferenceScreen, Bundle mdmProperties, String preferenceKey)
+    {
+        try
+        {
+            final ListPreference preference = preferenceScreen.findPreference(preferenceKey);
+
+            if (preference != null && mdmProperties.containsKey(preferenceKey))
+            {
+                final int mdmIntProperty = mdmProperties.getInt(preferenceKey, -1);
+
+                if (mdmIntProperty != -1)
+                {
+                    preference.setEnabled(false);
+                    preference.setValueIndex(mdmIntProperty);
+                    Timber.i("Setting the location provider to %d", mdmIntProperty);
 
                     getPreferenceManager().getSharedPreferences()
                             .edit()
@@ -362,5 +449,109 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         final Preference appInstanceIdPreference = findPreference(NetworkSurveyConstants.PROPERTY_APP_INSTANCE_ID);
 
         SettingsUtils.setAppInstanceId(context, appInstanceIdPreference);
+    }
+
+    /**
+     * Check to see if we should show the rationale for any of the CDR permissions. If so, then display a dialog that
+     * explains what permissions we need for this app to work properly.
+     * <p>
+     * If we should not show the rationale, then just request the permissions.
+     */
+    private void showCdrPermissionRationaleAndRequestPermissions()
+    {
+        final FragmentActivity activity = getActivity();
+        if (activity == null) return;
+
+        final Context context = getContext();
+        if (context == null) return;
+
+        if (missingAnyPermissions(CDR_REQUIRED_PERMISSIONS))
+        {
+            AlertDialog.Builder alertBuilder = new AlertDialog.Builder(context);
+            alertBuilder.setCancelable(true);
+            alertBuilder.setTitle(getString(R.string.cdr_required_permissions_rationale_title));
+            alertBuilder.setMessage(getText(R.string.cdr_required_permissions_rationale));
+            alertBuilder.setPositiveButton(R.string.request, (dialog, which) -> requestRequiredCdrPermissions());
+
+            AlertDialog permissionsExplanationDialog = alertBuilder.create();
+            permissionsExplanationDialog.show();
+
+            // Revert the cdr autostart preference if the permissions have not been granted
+            final SwitchPreferenceCompat preference = getPreferenceScreen().findPreference(NetworkSurveyConstants.PROPERTY_AUTO_START_CDR_LOGGING);
+            if (preference != null) preference.setChecked(false);
+            getPreferenceManager().getSharedPreferences()
+                    .edit()
+                    .putBoolean(NetworkSurveyConstants.PROPERTY_AUTO_START_CDR_LOGGING, false)
+                    .apply();
+
+            return;
+        }
+
+        if (missingAnyPermissions(CDR_OPTIONAL_PERMISSIONS))
+        {
+            AlertDialog.Builder alertBuilder = new AlertDialog.Builder(context);
+            alertBuilder.setCancelable(true);
+            alertBuilder.setTitle(getString(R.string.cdr_optional_permissions_rationale_title));
+            alertBuilder.setMessage(getText(R.string.cdr_optional_permissions_rationale));
+            alertBuilder.setPositiveButton(R.string.request, (dialog, which) -> requestOptionalCdrPermissions());
+            alertBuilder.setNegativeButton(R.string.ignore, (dialog, which) -> {
+
+            });
+
+            AlertDialog permissionsExplanationDialog = alertBuilder.create();
+            permissionsExplanationDialog.show();
+        }
+    }
+
+    /**
+     * @return True if any of the permissions have been denied. False if all the permissions
+     * have been granted.
+     */
+    private boolean missingAnyPermissions(String[] permissions)
+    {
+        final Context context = getContext();
+        if (context == null) return true;
+        for (String permission : permissions)
+        {
+            if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED)
+            {
+                Timber.i("Missing the permission: %s", permission);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Request the permissions needed for this app if any of them have not yet been granted.  If all of the permissions
+     * are already granted then don't request anything.
+     */
+    private void requestRequiredCdrPermissions()
+    {
+        if (missingAnyPermissions(CDR_REQUIRED_PERMISSIONS))
+        {
+            FragmentActivity activity = getActivity();
+            if (activity != null)
+            {
+                ActivityCompat.requestPermissions(activity, CDR_REQUIRED_PERMISSIONS, ACCESS_REQUIRED_PERMISSION_REQUEST_ID);
+            }
+        }
+    }
+
+    /**
+     * Request the optional permissions for this app if any of them have not yet been granted. If all of the permissions
+     * are already granted then don't request anything.
+     */
+    private void requestOptionalCdrPermissions()
+    {
+        if (missingAnyPermissions(CDR_OPTIONAL_PERMISSIONS))
+        {
+            FragmentActivity activity = getActivity();
+            if (activity != null)
+            {
+                ActivityCompat.requestPermissions(activity, CDR_OPTIONAL_PERMISSIONS, ACCESS_OPTIONAL_PERMISSION_REQUEST_ID);
+            }
+        }
     }
 }

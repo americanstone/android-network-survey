@@ -1,38 +1,85 @@
 package com.craxiom.networksurvey.ui.cellular
 
+import android.content.Context
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.craxiom.messaging.CdmaRecord
+import com.craxiom.messaging.GsmRecord
+import com.craxiom.messaging.LteRecord
+import com.craxiom.messaging.NrRecord
+import com.craxiom.messaging.UmtsRecord
 import com.craxiom.networksurvey.BuildConfig
 import com.craxiom.networksurvey.R
 import com.craxiom.networksurvey.model.CellularProtocol
+import com.craxiom.networksurvey.model.Plmn
+import com.craxiom.networksurvey.ui.cellular.model.CustomLocationOverlay
+import com.craxiom.networksurvey.ui.cellular.model.FollowMyLocationChangeListener
+import com.craxiom.networksurvey.ui.cellular.model.ServingCellInfo
+import com.craxiom.networksurvey.ui.cellular.model.ServingSignalInfo
 import com.craxiom.networksurvey.ui.cellular.model.TowerMapViewModel
 import com.craxiom.networksurvey.ui.cellular.model.TowerMarker
+import com.craxiom.networksurvey.ui.cellular.model.TowerSource
 import com.google.gson.annotations.SerializedName
+import com.google.protobuf.GeneratedMessage
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.OkHttpClient
+import org.osmdroid.bonuspack.clustering.RadiusMarkerClusterer
 import org.osmdroid.events.DelayedMapListener
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
@@ -42,8 +89,8 @@ import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.IMyLocationConsumer
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -69,11 +116,25 @@ private const val MAX_TOWERS_ON_MAP = 5000
  * NS backend.
  */
 @Composable
-internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
+internal fun TowerMapScreen(
+    viewModel: TowerMapViewModel = viewModel(),
+    onBackButtonPressed: () -> Unit
+) {
+
+    val paddingInsets by viewModel.paddingInsets.collectAsStateWithLifecycle()
 
     val isLoadingInProgress by viewModel.isLoadingInProgress.collectAsStateWithLifecycle()
     val isZoomedOutTooFar by viewModel.isZoomedOutTooFar.collectAsStateWithLifecycle()
     val radio by viewModel.selectedRadioType.collectAsStateWithLifecycle()
+    val currentPlmnFilter by viewModel.plmnFilter.collectAsStateWithLifecycle()
+    val currentSource by viewModel.selectedSource.collectAsStateWithLifecycle()
+    val noTowersFound by viewModel.noTowersFound.collectAsStateWithLifecycle()
+
+    val missingApiKey = BuildConfig.NS_API_KEY.isEmpty()
+
+    val servingCells by viewModel.servingCells.collectAsStateWithLifecycle()
+    var selectedSimIndex by remember { mutableIntStateOf(-1) }
+    val servingCellSignals by viewModel.servingSignals.collectAsStateWithLifecycle()
 
     val options = listOf(
         CellularProtocol.GSM.name,
@@ -83,86 +144,325 @@ internal fun TowerMapScreen(viewModel: TowerMapViewModel = viewModel()) {
         CellularProtocol.NR.name
     )
     var expanded by remember { mutableStateOf(false) }
+    var isFollowing by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+    var showPlmnDialog by remember { mutableStateOf(false) }
+    var showTowerSourceDialog by remember { mutableStateOf(false) }
 
+    val statusBarHeight = paddingInsets.calculateTopPadding()
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            OsmdroidMapView(viewModel)
+            OsmdroidMapView(viewModel, object :
+                FollowMyLocationChangeListener {
+                override fun onFollowMyLocationChanged(enabled: Boolean) {
+                    isFollowing = enabled
+                }
+            })
+
+            TopAppBarOverlay(statusBarHeight)
+
+            Column {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = statusBarHeight + 4.dp, end = 16.dp)
+                ) {
+                    Row {
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        IconButton(onClick = { onBackButtonPressed() }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back button",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .padding(0.dp)
+                                    .background(color = MaterialTheme.colorScheme.primary)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        IconButton(onClick = { showInfoDialog = true }) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = "About Cellular Tower Map",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .padding(0.dp)
+                                    .background(color = MaterialTheme.colorScheme.onSurface)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Button(
+                            onClick = { showPlmnDialog = true },
+                        ) {
+                            val buttonText =
+                                if (currentPlmnFilter.isSet()) currentPlmnFilter.toString() else "PLMN Filter"
+                            Text(
+                                text = buttonText,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 14.nonScaledSp,
+                                lineHeight = 14.nonScaledSp,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Button(
+                            onClick = { expanded = true },
+                        ) {
+                            Text(
+                                text = radio, color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 14.nonScaledSp,
+                                lineHeight = 14.nonScaledSp,
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                    ) {
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            options.forEach { label ->
+                                DropdownMenuItem(
+                                    text = { Text(text = label) },
+                                    onClick = {
+                                        if (viewModel.selectedRadioType.value != label) {
+                                            Timber.i("The Selected radio type changed to $label")
+                                            viewModel.setSelectedRadioType(label)
+                                            viewModel.towers.value.clear()
+                                            viewModel.viewModelScope.launch {
+                                                runTowerQuery(viewModel)
+                                            }
+                                        }
+                                        expanded = false
+                                    })
+                            }
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(end = 16.dp)
+                ) {
+                    Button(
+                        onClick = { showTowerSourceDialog = true },
+                    ) {
+                        val buttonText = currentSource.displayName
+                        Text(
+                            text = buttonText,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.nonScaledSp,
+                            lineHeight = 14.nonScaledSp,
+                        )
+                    }
+                }
+            }
 
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .align(Alignment.BottomEnd)
+                    .padding(vertical = paddingInsets.calculateBottomPadding(), horizontal = 16.dp)
             ) {
+                Column {
+                    Surface(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        color = MaterialTheme.colorScheme.primary
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_my_location),
+                                contentDescription = "My Location",
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Button(
+                                onClick = { goToMyLocation(viewModel) },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent
+                                )
+                            ) {}
+                        }
+                    }
 
-                // Button to show the DropdownMenu
-                Button(
-                    onClick = { expanded = true },
-                ) {
-                    Text(text = radio)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    CircleButtonWithLine(
+                        isFollowing = isFollowing,
+                        toggleFollowMe = {
+                            if (viewModel.myLocationOverlay == null) return@CircleButtonWithLine
+
+                            val currentIsFollowing =
+                                viewModel.myLocationOverlay!!.isFollowLocationEnabled
+                            isFollowing = !currentIsFollowing
+                            toggleFollowMe(viewModel, isFollowing)
+                        })
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(vertical = paddingInsets.calculateBottomPadding(), horizontal = 16.dp)
+            ) {
+                if (servingCells.size > 1) {
+                    // Only show the drop down if there is more than one option
+                    SimCardDropdown(servingCells, selectedSimIndex) { newIndex ->
+                        selectedSimIndex = newIndex
+                    }
                 }
 
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    options.forEach { label ->
-                        DropdownMenuItem(
-                            text = { Text(text = label) },
-                            onClick = {
-                                if (viewModel.selectedRadioType.value != label) {
-                                    Timber.i("The Selected radio type changed to $label")
-                                    viewModel.setSelectedRadioType(label)
-                                    viewModel.towers.value.clear()
-                                    viewModel.viewModelScope.launch {
-                                        runTowerQuery(viewModel)
-                                    }
-                                }
-                                expanded = false
-                            })
+                // Display the serving cell info for the selected SIM card
+                if (servingCells.isNotEmpty()) {
+                    if (servingCells.size == 1) {
+                        ServingCellInfoDisplay(
+                            servingCells.values.first(),
+                            servingCellSignals.values.first()
+                        )
+                    } else {
+                        if (selectedSimIndex == -1) {
+                            // Default to the first key if a SIM card has not been selected
+                            selectedSimIndex = servingCells.keys.first()
+                        }
+                        ServingCellInfoDisplay(
+                            servingCells[selectedSimIndex],
+                            servingCellSignals[selectedSimIndex]
+                        )
                     }
                 }
             }
         }
+
+        if (showInfoDialog) {
+            TowerMapInfoDialog(onDismiss = { showInfoDialog = false })
+        }
+
+        if (showPlmnDialog) {
+            PlmnFilterDialog(
+                currentPlmn = currentPlmnFilter,
+                onSetPlmnFilter = { mcc, mnc ->
+                    viewModel.setPlmnFilter(Plmn(mcc, mnc))
+                    viewModel.towers.value.clear()
+                    viewModel.viewModelScope.launch {
+                        runTowerQuery(viewModel)
+                    }
+                },
+                onDismiss = { showPlmnDialog = false }
+            )
+        }
+
+        if (showTowerSourceDialog) {
+            TowerSourceSelectionDialog(
+                currentSource = currentSource,
+                onSetSource = { source ->
+                    if (source != currentSource) {
+                        viewModel.setTowerSource(source)
+                        viewModel.towers.value.clear()
+                        viewModel.viewModelScope.launch {
+                            runTowerQuery(viewModel)
+                        }
+                    }
+                },
+                onDismiss = { showTowerSourceDialog = false }
+            )
+        }
     }
 
-    if (isZoomedOutTooFar) {
+    if (missingApiKey) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 8.dp)
-        ) {
-            Text(text = "Zoom in farther to see the towers", fontWeight = FontWeight.Bold)
-        }
-    }
-
-    if (isLoadingInProgress) {
-        Box(
-            contentAlignment = Alignment.TopCenter,
-            modifier = Modifier
-                .fillMaxSize()
                 .padding(8.dp)
         ) {
-            CircularProgressIndicator()
+            Text(
+                text = "Missing the API Key. Please report this bug at https://github.com/christianrowlands/android-network-survey/issues/new/choose",
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
+    } else {
+        if (isZoomedOutTooFar) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text(
+                    text = "Zoom in farther to see towers", fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.surface, softWrap = true,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else if (noTowersFound) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text(
+                    text = "No towers found in the area", fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.surface, softWrap = true,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        if (isLoadingInProgress) {
+            Box(
+                contentAlignment = Alignment.TopCenter,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = statusBarHeight)
+            ) {
+                CircularProgressIndicator()
+            }
         }
     }
-    //}
 }
 
 @Composable
-internal fun OsmdroidMapView(viewModel: TowerMapViewModel) {
-    val points by viewModel.towers.collectAsStateWithLifecycle()
-
+internal fun OsmdroidMapView(
+    viewModel: TowerMapViewModel,
+    followMyLocationChangeListener: FollowMyLocationChangeListener
+) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
             val mapView = MapView(context)
             viewModel.mapView = mapView
+            viewModel.gpsMyLocationProvider = GpsMyLocationProvider(mapView.context)
+            viewModel.towerOverlayGroup = RadiusMarkerClusterer(context)
+            viewModel.towerOverlayGroup.setMaxClusteringZoomLevel(14)
 
             mapView.setTileSource(TileSourceFactory.MAPNIK)
+            mapView.zoomController.display.setMarginPadding(.75f, .5f)
             mapView.zoomController.setVisibility(CustomZoomButtonsController.Visibility.ALWAYS)
             mapView.setMultiTouchControls(true)
 
@@ -174,51 +474,212 @@ internal fun OsmdroidMapView(viewModel: TowerMapViewModel) {
             val mapController = mapView.controller
             mapController.setZoom(INITIAL_ZOOM)
 
-            addDefaultOverlays(mapView)
+            addDefaultOverlays(
+                context,
+                mapView,
+                viewModel.gpsMyLocationProvider,
+                viewModel,
+                followMyLocationChangeListener
+            )
             mapView.overlays.add(viewModel.towerOverlayGroup)
+            mapView.overlays.add(viewModel.servingCellLinesOverlayGroup)
 
             // Listener to detect when map movement stops
             mapView.addMapListener(DelayedMapListener(object : MapListener {
                 override fun onScroll(event: ScrollEvent?): Boolean {
-                    runListener(mapView, viewModel, points)
+                    runListener(mapView, viewModel)
                     return true
                 }
 
                 override fun onZoom(event: ZoomEvent?): Boolean {
-                    runListener(mapView, viewModel, points)
+                    runListener(mapView, viewModel)
                     return true
                 }
             }, 400))
 
             mapView
         },
-        update = { mapView ->
-            Timber.i("Updating the map view!!!")
-            recreateOverlaysFromTowerData(viewModel)
+        update = {
+            viewModel.recreateOverlaysFromTowerData(it)
         }
     )
 }
 
-private fun recreateOverlaysFromTowerData(viewModel: TowerMapViewModel) {
-    viewModel.towerOverlayGroup?.items?.clear()
+@Composable
+fun TopAppBarOverlay(height: Dp) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(Color.Black.copy(alpha = 0.25f))
+    ) {
+    }
+}
 
-    val towers = viewModel.towers.value
+@Composable
+fun SimCardDropdown(
+    servingCells: HashMap<Int, ServingCellInfo>,
+    selectedSimIndex: Int,
+    onSimSelected: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val simOptions = servingCells.keys.toList() // Get SIM card indices
 
-    Timber.i("Adding %s points to the map", towers.size)
-    towers.forEach { marker ->
-        viewModel.towerOverlayGroup?.add(marker)
+    // Dropdown button for selecting SIM card
+    Button(onClick = { expanded = true }) {
+        Text(text = "SIM Card $selectedSimIndex")
+    }
+
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false }
+    ) {
+        simOptions.forEachIndexed { _, simIndex ->
+            DropdownMenuItem(
+                text = { Text(text = "SIM Card $simIndex") },
+                onClick = {
+                    onSimSelected(simIndex)
+                    expanded = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun ServingCellInfoDisplay(cellInfo: ServingCellInfo?, servingSignalInfo: ServingSignalInfo?) {
+    Column(
+        modifier = Modifier
+            .background(Color(0xA6EEEEEE))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        val fontSize = 14.nonScaledSp
+        val lineHeight = 20.nonScaledSp
+        Text(
+            text = "Serving Cell Info",
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.surface,
+            fontSize = fontSize,
+            lineHeight = lineHeight
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (cellInfo != null) {
+            val servingCell = cellInfo.servingCell ?: return Text(
+                "No serving cell found",
+                color = MaterialTheme.colorScheme.surface,
+                fontSize = fontSize,
+                lineHeight = lineHeight
+            )
+            val record = servingCell.cellularRecord
+
+            // Display technology and signal strengths based on CellularRecord
+            Text(
+                "Technology: ${servingCell.cellularProtocol}",
+                color = MaterialTheme.colorScheme.surface,
+                fontSize = fontSize,
+                lineHeight = lineHeight
+            )
+            if (servingSignalInfo != null) {
+                Text(
+                    servingSignalInfo.toString(),
+                    color = MaterialTheme.colorScheme.surface,
+                    fontSize = fontSize,
+                    lineHeight = lineHeight
+                )
+            }
+
+            val servingCellDisplayString = getServingCellDisplayString(record)
+            Text(
+                servingCellDisplayString, color = MaterialTheme.colorScheme.surface,
+                fontSize = fontSize,
+                lineHeight = lineHeight
+            )
+        } else {
+            Text(
+                "No serving cell info available", color = MaterialTheme.colorScheme.surface,
+                fontSize = fontSize,
+                lineHeight = lineHeight
+            )
+        }
+    }
+}
+
+/**
+ * Moves the map view to the user's current location.
+ */
+private fun goToMyLocation(viewModel: TowerMapViewModel) {
+    val lastKnownLocation = viewModel.gpsMyLocationProvider.lastKnownLocation
+    if (lastKnownLocation == null) {
+        Timber.w("The last known location is null")
+        return
+    }
+    viewModel.mapView!!.controller.animateTo(
+        GeoPoint(
+            lastKnownLocation.latitude,
+            lastKnownLocation.longitude
+        )
+    )
+}
+
+/**
+ * Toggles the option to continuously move the map view to the user's current location.
+ */
+private fun toggleFollowMe(viewModel: TowerMapViewModel, newIsFollowing: Boolean) {
+    if (viewModel.myLocationOverlay == null) return
+
+    if (newIsFollowing) {
+        viewModel.myLocationOverlay?.enableFollowLocation()
+    } else {
+        viewModel.myLocationOverlay?.disableFollowLocation()
     }
 }
 
 /**
  * Adds the default overlays to the map view such as the my location overlay.
  */
-private fun addDefaultOverlays(mapView: MapView) {
-    val mLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(mapView.context), mapView)
-    mLocationOverlay.enableMyLocation()
-    mapView.overlays.add(mLocationOverlay)
+private fun addDefaultOverlays(
+    context: Context,
+    mapView: MapView,
+    gpsMyLocationProvider: GpsMyLocationProvider,
+    viewModel: TowerMapViewModel,
+    followMyLocationChangeListener: FollowMyLocationChangeListener
+) {
+    val locationConsumer = IMyLocationConsumer { location, _ ->
+        viewModel.myLocation = location
+        viewModel.drawServingCellLine()
+    }
+
+    viewModel.myLocationOverlay =
+        CustomLocationOverlay(
+            gpsMyLocationProvider,
+            mapView,
+            locationConsumer,
+            followMyLocationChangeListener
+        )
+    val locationOverlay: MyLocationNewOverlay = viewModel.myLocationOverlay!!
+
+    val icon = AppCompatResources.getDrawable(context, R.drawable.ic_location_pin)?.toBitmap()
+    if (icon != null) {
+        locationOverlay.setPersonIcon(icon)
+        locationOverlay.setPersonAnchor(0.5f, .8725f)
+    }
+
+    val directionIcon =
+        AppCompatResources.getDrawable(context, R.drawable.ic_navigation)?.toBitmap()
+    if (icon != null) {
+        locationOverlay.setDirectionIcon(directionIcon)
+        locationOverlay.setDirectionAnchor(0.5f, 0.5f)
+    }
+
+    locationOverlay.enableMyLocation()
+    mapView.overlays.add(locationOverlay)
 }
 
+/**
+ * Runs the tower query to get the towers from the back end for the current map view.
+ */
 private suspend fun runTowerQuery(viewModel: TowerMapViewModel) {
     viewModel.setIsLoadingInProgress(true)
 
@@ -230,10 +691,12 @@ private suspend fun runTowerQuery(viewModel: TowerMapViewModel) {
     val towers = viewModel.towers.value
 
     towerPoints.forEach {
-        val towerMarker = TowerMarker(viewModel.mapView, it)
+        val towerMarker = TowerMarker(viewModel.mapView!!, it)
 
         if (towers.size >= MAX_TOWERS_ON_MAP) {
-            towers.remove(towers.first())
+            val towerToRemove = towers.first()
+            towers.remove(towerToRemove)
+            towerToRemove.destroy()
         }
 
         if (towers.contains(towerMarker)) {
@@ -243,7 +706,7 @@ private suspend fun runTowerQuery(viewModel: TowerMapViewModel) {
         towers.add(towerMarker)
     }
 
-    // TODO Add a text overlay if no towers are in the viewModel.towers list
+    viewModel.setNoTowersFound(towers.isEmpty())
 
     viewModel.setIsLoadingInProgress(false)
 }
@@ -254,8 +717,7 @@ private suspend fun runTowerQuery(viewModel: TowerMapViewModel) {
  */
 private fun runListener(
     mapView: MapView,
-    viewModel: TowerMapViewModel,
-    points: LinkedHashSet<Marker>
+    viewModel: TowerMapViewModel
 ) {
     Timber.d("Map is idle")
 
@@ -296,28 +758,50 @@ private suspend fun getTowersFromServer(
     return suspendCancellableCoroutine { continuation ->
         try {
             viewModel.viewModelScope.launch {
-                val bounds = viewModel.lastQueriedBounds.value ?: return@launch
+                try {
+                    val bounds = viewModel.lastQueriedBounds.value ?: return@launch
 
-                // Format the bounding box coordinates to the required "bbox" string format
-                val bbox =
-                    "${bounds.latSouth},${bounds.lonWest},${bounds.latNorth},${bounds.lonEast}"
-                val response = nsApi.getTowers(bbox, viewModel.selectedRadioType.value)
+                    // Format the bounding box coordinates to the required "bbox" string format
+                    val bbox =
+                        "${bounds.latSouth},${bounds.lonWest},${bounds.latNorth},${bounds.lonEast}"
 
-                // Process the response
-                if (response.code() == 204) {
-                    // No towers found, return an empty list
-                    Timber.w("No towers found; raw: ${response.raw()}")
-                    continuation.resume(Collections.emptyList(), onCancellation = null)
-                    Collections.emptyList<GeoPoint>()
-                } else if (response.isSuccessful && response.body() != null) {
-                    Timber.i("Successfully loaded towers")
-                    val towerData = response.body()!!
+                    val response: Response<TowerResponse>
+                    if (viewModel.plmnFilter.value.isSet()) {
+                        val plmn = viewModel.plmnFilter.value
+                        response = nsApi.getTowers(
+                            bbox,
+                            viewModel.selectedRadioType.value,
+                            plmn.mcc,
+                            plmn.mnc,
+                            viewModel.selectedSource.value.apiName
+                        )
+                    } else {
+                        response = nsApi.getTowers(
+                            bbox,
+                            viewModel.selectedRadioType.value,
+                            viewModel.selectedSource.value.apiName
+                        )
+                    }
 
-                    continuation.resume(towerData.cells, onCancellation = {
-                        Timber.e("The tower data fetch was cancelled")
-                    })
-                } else {
-                    Timber.w("Failed to load towers; raw: ${response.raw()}")
+                    // Process the response
+                    if (response.code() == 204) {
+                        // No towers found, return an empty list
+                        Timber.w("No towers found; raw: ${response.raw()}")
+                        continuation.resume(Collections.emptyList(), onCancellation = null)
+                        Collections.emptyList<GeoPoint>()
+                    } else if (response.isSuccessful && response.body() != null) {
+                        Timber.i("Successfully loaded towers")
+                        val towerData = response.body()!!
+
+                        continuation.resume(towerData.cells, onCancellation = {
+                            Timber.e("The tower data fetch was cancelled")
+                        })
+                    } else {
+                        Timber.w("Failed to load towers; raw: ${response.raw()}")
+                        continuation.resume(Collections.emptyList(), onCancellation = null)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to fetch towers")
                     continuation.resume(Collections.emptyList(), onCancellation = null)
                 }
             }
@@ -348,12 +832,263 @@ private fun calculateArea(bounds: BoundingBox): Double {
     return width * height // area in square meters
 }
 
+private fun getServingCellDisplayString(message: GeneratedMessage): String {
+    return when (message) {
+        is GsmRecord -> {
+            "MCC: ${message.data.mcc.value}\nMNC: ${message.data.mnc.value}\nLAC: ${message.data.lac.value}\nCellId: ${message.data.ci.value}"
+        }
+
+        is CdmaRecord -> {
+            "SID: ${message.data.sid.value}\nNID: ${message.data.nid.value}\nBSID: ${message.data.bsid.value}"
+        }
+
+        is UmtsRecord -> {
+            "MCC: ${message.data.mcc.value}\nMNC: ${message.data.mnc.value}\nLAC: ${message.data.lac.value}\nCellId: ${message.data.cid.value}"
+        }
+
+        is LteRecord -> {
+            "MCC: ${message.data.mcc.value}\nMNC: ${message.data.mnc.value}\nTAC: ${message.data.tac.value}\nECI: ${message.data.eci.value}"
+        }
+
+        is NrRecord -> {
+            "MCC: ${message.data.mcc.value}\nMNC: ${message.data.mnc.value}\nTAC: ${message.data.tac.value}\nNCI: ${message.data.nci.value}"
+        }
+
+        else -> {
+            "Unknown Protocol"
+        }
+    }
+}
+
+@Composable
+fun CircleButtonWithLine(
+    isFollowing: Boolean,
+    toggleFollowMe: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary),
+        color = MaterialTheme.colorScheme.primary
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+        ) {
+            Image(
+                painter = painterResource(id = if (isFollowing) R.drawable.ic_follow_me_enabled else R.drawable.ic_follow_me_disabled),
+                contentDescription = "Follow Me",
+                modifier = Modifier.size(24.dp)
+            )
+            Button(
+                onClick = { toggleFollowMe() },
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent
+                )
+            ) {}
+        }
+    }
+}
+
+@Composable
+fun TowerMapInfoDialog(onDismiss: () -> Unit) {
+    // TODO Make scrollable
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Tower Map Information")
+        },
+        text = {
+            SelectionContainer {
+                Text(
+                    text = """
+                    The tower locations are sourced from various database, for example OpenCelliD ( https://opencellid.org ).
+                    
+                    Please note that these locations may not be accurate as they are generated from crowd-sourced data and based on survey results. The tower locations are provided for your convenience, but they should not be relied upon for precise accuracy. We recommend verifying tower locations through additional sources if accuracy is critical.
+                    
+                    Legend:
+                    - Purple: Your Current Serving Cell
+                    - Blue: Non-Serving Cells
+                """.trimIndent()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK")
+            }
+        }
+    )
+}
+
+@Composable
+fun PlmnFilterDialog(
+    currentPlmn: Plmn,
+    onSetPlmnFilter: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var mccInput by remember { mutableStateOf(currentPlmn.mcc.toString()) }
+    var mncInput by remember { mutableStateOf(currentPlmn.mnc.toString()) }
+    // TODO Make scrollable
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Set PLMN Filter")
+        },
+        text = {
+            Column {
+                SelectionContainer {
+                    Text(
+                        text = """
+                        A PLMN (Public Land Mobile Network) is a network uniquely identified by a Mobile Country Code (MCC) and a Mobile Network Code (MNC). In other words, a PLMN identifies a specific cellular provider. 
+                        
+                        This filter allows you to display towers for a specific cellular provider.
+                    """.trimIndent()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = if (mccInput == "0") "" else mccInput,
+                    onValueChange = { mccInput = it },
+                    label = { Text("MCC") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (mccInput.isNotEmpty() && mccInput != "0") {
+                            IconButton(onClick = { mccInput = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear MCC"
+                                )
+                            }
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = if (mncInput == "0") "" else mncInput,
+                    onValueChange = { mncInput = it },
+                    label = { Text("MNC") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (mncInput.isNotEmpty() && mncInput != "0") {
+                            IconButton(onClick = { mncInput = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear MNC"
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val mcc = mccInput.toIntOrNull() ?: 0
+                    val mnc = mncInput.toIntOrNull() ?: 0
+                    onSetPlmnFilter(mcc, mnc)
+                    onDismiss()
+                }
+            ) {
+                Text("Set Filter")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun TowerSourceSelectionDialog(
+    currentSource: TowerSource,
+    onSetSource: (TowerSource) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedSource by remember { mutableStateOf(currentSource) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Select Tower Data Source")
+        },
+        text = {
+            Column {
+                SelectionContainer {
+                    Text(
+                        text = """
+                        Select a data source to display tower information. Each source provides data from different origins:
+                        
+                        - OpenCelliD: Crowdsourced tower data from around the world.
+                        - BTSearch: Poland specific tower database.
+                    """.trimIndent()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TowerSource.entries.forEach { source ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = (source == selectedSource),
+                                onClick = { selectedSource = source }
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (source == selectedSource),
+                            onClick = { selectedSource = source }
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(text = source.displayName)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSetSource(selectedSource)
+                    onDismiss()
+                }
+            ) {
+                Text("Set Source")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 // The API definition for the NS Tower Service
 interface Api {
     @GET("cells/area")
     suspend fun getTowers(
         @Query("bbox") bbox: String,
-        @Query("radio") radio: String
+        @Query("radio") radio: String,
+        @Query("source") source: String
+    ): Response<TowerResponse>
+
+    @GET("cells/area")
+    suspend fun getTowers(
+        @Query("bbox") bbox: String,
+        @Query("radio") radio: String,
+        @Query("mcc") mcc: Int,
+        @Query("mnc") mnc: Int,
+        @Query("source") source: String
     ): Response<TowerResponse>
 }
 
@@ -392,7 +1127,8 @@ data class Tower(
     @SerializedName("changeable") val changeable: Int,
     @SerializedName("created_at") val createdAt: Long,
     @SerializedName("updated_at") val updatedAt: Long,
-    @SerializedName("radio") val radio: String
+    @SerializedName("radio") val radio: String,
+    @SerializedName("source") val source: String
 )
 
 /**

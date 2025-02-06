@@ -25,9 +25,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelStoreOwner;
-import androidx.navigation.Navigation;
-import androidx.navigation.fragment.NavHostFragment;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DividerItemDecoration;
 
@@ -41,7 +38,8 @@ import com.craxiom.networksurvey.fragments.model.BluetoothViewModel;
 import com.craxiom.networksurvey.listeners.IBluetoothSurveyRecordListener;
 import com.craxiom.networksurvey.model.SortedSet;
 import com.craxiom.networksurvey.services.NetworkSurveyService;
-import com.craxiom.networksurvey.util.IOUtils;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
+import com.craxiom.networksurvey.util.NsUtils;
 import com.craxiom.networksurvey.util.PreferenceUtils;
 
 import java.util.ArrayList;
@@ -96,9 +94,7 @@ public class BluetoothFragment extends AServiceDataFragment implements IBluetoot
     {
         binding = FragmentBluetoothListBinding.inflate(inflater);
 
-        final ViewModelStoreOwner viewModelStoreOwner = NavHostFragment.findNavController(this).getViewModelStoreOwner(R.id.nav_graph);
-        final ViewModelProvider viewModelProvider = new ViewModelProvider(viewModelStoreOwner);
-        viewModel = viewModelProvider.get(getClass().getName(), BluetoothViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity()).get(BluetoothViewModel.class);
 
         binding.setVm(viewModel);
 
@@ -260,9 +256,16 @@ public class BluetoothFragment extends AServiceDataFragment implements IBluetoot
         FragmentActivity activity = getActivity();
         if (activity == null) return;
 
-        Navigation.findNavController(activity, getId())
-                .navigate(BluetoothFragmentDirections.actionBtListFragmentToBtDetailsFragment(
-                        bluetoothData));
+        try
+        {
+            SharedViewModel viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+            viewModel.triggerNavigationToBluetooth(bluetoothData);
+        } catch (Exception e)
+        {
+            // An IllegalArgumentException can occur when the user switches to a new fragment (e.g. cellular details)
+            // before the navigation is complete. This is an edge case that we can ignore.
+            Timber.e(e, "Could not navigate to the Bluetooth Details Fragment");
+        }
     }
 
     /**
@@ -413,7 +416,7 @@ public class BluetoothFragment extends AServiceDataFragment implements IBluetoot
             {
                 final BluetoothRecord bluetoothRecord = bluetoothRecordSortedSet.get(i);
                 // Adding 5_000 ms so that we have plenty of time for the next scan to return its results
-                if (IOUtils.getEpochFromRfc3339(bluetoothRecord.getData().getDeviceTime()) + bluetoothScanRateMs + 5_000 < currentTimeMillis)
+                if (NsUtils.getEpochFromRfc3339(bluetoothRecord.getData().getDeviceTime()) + bluetoothScanRateMs + 5_000 < currentTimeMillis)
                 {
                     itemsToRemove.add(bluetoothRecord);
                 }

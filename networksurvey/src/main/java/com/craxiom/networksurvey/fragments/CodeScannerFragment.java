@@ -11,13 +11,16 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.Navigation;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.budiyev.android.codescanner.CodeScanner;
 import com.budiyev.android.codescanner.CodeScannerView;
 import com.craxiom.networksurvey.R;
 import com.craxiom.networksurvey.fragments.model.MqttConnectionSettings;
+import com.craxiom.networksurvey.ui.main.SharedViewModel;
 import com.google.gson.Gson;
+
+import timber.log.Timber;
 
 /**
  * Fragment responsible for QR code scanning. Leverages an open source code scanning library from
@@ -34,13 +37,14 @@ public class CodeScannerFragment extends Fragment
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState)
     {
-        final Activity activity = getActivity();
         View root = inflater.inflate(R.layout.fragment_scanner, container, false);
+
+        final Activity activity = getActivity();
+        if (activity == null) return null;
 
         CodeScannerView scannerView = root.findViewById(R.id.scanner_view);
         codeScanner = new CodeScanner(activity, scannerView);
         codeScanner.setDecodeCallback(result -> activity.runOnUiThread(() -> {
-
             if (!result.getText().isEmpty())
             {
                 try
@@ -51,18 +55,16 @@ public class CodeScannerFragment extends Fragment
                     final String scanSuccess = "Successfully scanned the MQTT settings";
                     Toast.makeText(getContext(), scanSuccess, Toast.LENGTH_SHORT).show();
 
-                    Navigation.findNavController(requireActivity(), getId())
-                            .navigate(CodeScannerFragmentDirections.actionScannerFragmentToMqttConnectionFragment()
-                                    .setMqttConnectionSettings(mqttConnectionSettings)
-                            );
+                    SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+                    viewModel.triggerNavigationToMqttConnection(mqttConnectionSettings);
                 } catch (Exception e)
                 {
+                    Timber.i(e, "Failed to read the MQTT settings");
                     final String scanFailed = "Failed to read the MQTT settings";
                     Toast.makeText(getContext(), scanFailed, Toast.LENGTH_SHORT).show();
-                    Navigation.findNavController(requireActivity(), getId())
-                            .navigate(CodeScannerFragmentDirections.actionScannerFragmentToMqttConnectionFragment()
-                                    .setMqttConnectionSettings(CodeScannerFragmentArgs.fromBundle(getArguments()).getMqttConnectionSettings())
-                            );
+
+                    SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+                    viewModel.triggerNavigationToMqttConnection(viewModel.getMqttConnectionSettings());
                 }
             }
         }));

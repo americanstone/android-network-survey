@@ -112,11 +112,13 @@ public class ColorUtils
      */
     public static int getSignalColorForValue(int signalStrength, int maxValue)
     {
-        if (signalStrength <= 0) return COLOR_BINS[0];
+        if (signalStrength <= 0 || maxValue <= 0) return COLOR_BINS[0];
 
         // Divide the delta by the number of spaces between values (which is one less than the number of values)
         final double step = (double) (maxValue) / (NUMBER_VALUES - 1);
-        final int index = Math.min((int) ((signalStrength) / step), NUMBER_VALUES);
+        int index = Math.min((int) ((signalStrength) / step), NUMBER_VALUES);
+
+        if (index < 0) index = 0;
 
         return COLOR_BINS[index];
     }

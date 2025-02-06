@@ -3,6 +3,7 @@ package com.craxiom.networksurvey;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -22,6 +23,7 @@ import timber.log.Timber;
  */
 public class GpsListener implements LocationListener
 {
+    public static final long LOCATION_AGE_THRESHOLD_MS = 60_000L;
     private final Set<LocationListener> listeners = new CopyOnWriteArraySet<>();
 
     private Location latestLocation;
@@ -134,9 +136,25 @@ public class GpsListener implements LocationListener
         }
     }
 
-    public Location getLatestLocation()
+    public synchronized Location getLatestLocation()
     {
-        return latestLocation;
+        if (latestLocation == null) return null;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        {
+            long locationTimeAge = latestLocation.getElapsedRealtimeAgeMillis();
+            if (locationTimeAge > LOCATION_AGE_THRESHOLD_MS)
+            {
+                // Don't return stale locations as it will mess up the data
+                return null;
+            } else
+            {
+                return latestLocation;
+            }
+        } else
+        {
+            return latestLocation;
+        }
     }
 
     /**
@@ -144,7 +162,7 @@ public class GpsListener implements LocationListener
      *
      * @param newLocation The newly provided location.
      */
-    private void updateLocation(Location newLocation)
+    private synchronized void updateLocation(Location newLocation)
     {
         latestLocation = newLocation;
 
