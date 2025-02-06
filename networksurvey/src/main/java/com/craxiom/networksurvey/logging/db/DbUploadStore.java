@@ -33,8 +33,8 @@ import timber.log.Timber;
 
 public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurveyRecordListener
 {
-    public static final int DISTANCE_MOVED_THRESHOLD = 35;// Earth's radius in meters
-    public static final int EARTH_RADIUS_METERS = 6371000;
+    public static final int DISTANCE_MOVED_THRESHOLD = 35;
+    public static final int EARTH_RADIUS_METERS = 6371000; // Earth's radius in meters
     private final SurveyDatabase database;
     private final ExecutorService executorService;
 
@@ -110,23 +110,23 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
 
             if (!gsmRecords.isEmpty())
             {
-                database.gsmRecordDao().insertRecords(gsmRecords);
+                if (database.isOpen()) database.gsmRecordDao().insertRecords(gsmRecords);
             }
             if (!cdmaRecords.isEmpty())
             {
-                database.cdmaRecordDao().insertRecords(cdmaRecords);
+                if (database.isOpen()) database.cdmaRecordDao().insertRecords(cdmaRecords);
             }
             if (!umtsRecords.isEmpty())
             {
-                database.umtsRecordDao().insertRecords(umtsRecords);
+                if (database.isOpen()) database.umtsRecordDao().insertRecords(umtsRecords);
             }
             if (!lteRecords.isEmpty())
             {
-                database.lteRecordDao().insertRecords(lteRecords);
+                if (database.isOpen()) database.lteRecordDao().insertRecords(lteRecords);
             }
             if (!nrRecords.isEmpty())
             {
-                database.nrRecordDao().insertRecords(nrRecords);
+                if (database.isOpen()) database.nrRecordDao().insertRecords(nrRecords);
             }
         });
     }
@@ -146,7 +146,7 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
 
             if (!wifiRecords.isEmpty())
             {
-                database.wifiRecordDao().insertRecords(wifiRecords);
+                if (database.isOpen()) database.wifiRecordDao().insertRecords(wifiRecords);
             }
         });
     }

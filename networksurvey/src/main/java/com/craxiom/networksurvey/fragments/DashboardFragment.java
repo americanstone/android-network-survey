@@ -261,6 +261,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
     {
         initializeLoggingSwitch(binding.uploadEnabledToggleSwitch, (newEnabledState, toggleSwitch) -> viewModel.setUploadEnabled(newEnabledState));
 
+        binding.uploadSettingsButton.setOnClickListener(v -> navigateToUploadSettings());
         binding.uploadButton.setOnClickListener(v -> showUploadDialog());
         binding.uploadCancelButton.setOnClickListener(v -> cancelUploads());
 
@@ -1344,7 +1345,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
 
             String beaconDbResult = workInfo.getOutputData().getString(NsUploaderWorker.BEACONDB_RESULT);
             binding.beacondbUploadStatus.setText(beaconDbResult);
-            binding.beacondbUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_error));
+            binding.beacondbUploadStatus.setTextColor(ContextCompat.getColor(context, R.color.md_theme_tertiary));
 
             String ocidResultMessage = workInfo.getOutputData().getString(NsUploaderWorker.OCID_RESULT_MESSAGE);
             if (Strings.isNullOrEmpty(ocidResultMessage))
