@@ -56,6 +56,8 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
             {
                 switch (cellularRecordWrapper.cellularProtocol)
                 {
+                    case NONE:
+                        break;
                     case GSM:
                         GsmRecordData gsmRecordData = ((GsmRecord) cellularRecordWrapper.cellularRecord).getData();
                         if (isCompleteGsmRecord(gsmRecordData)) // TODO Add a check to make sure the location has changed by a certain amount

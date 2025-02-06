@@ -80,7 +80,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
 
         updateUiForMdmIfNecessary();
 
-        final Preference uploadSettings = findPreference("upload_preferences");
+        final Preference uploadSettings = findPreference(NetworkSurveyConstants.UPLOAD_PREFERENCES_GROUP);
         if (uploadSettings != null)
         {
             uploadSettings.setOnPreferenceClickListener(preference -> {
@@ -218,13 +218,25 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
      */
     private void updateUiForMdmIfNecessary()
     {
-        if (!MdmUtils.isUnderMdmControl(requireContext(), MDM_OVERLAP_PROPERTY_KEYS)) return;
+        Context context = requireContext();
+        if (!MdmUtils.isUnderMdmControl(context, MDM_OVERLAP_PROPERTY_KEYS)) return;
 
         final SharedPreferences sharedPreferences = getPreferenceManager().getSharedPreferences();
 
         // Update the UI so that the MDM override is visible, and that some of the settings can't be changed
         final Preference overridePreference = getPreferenceScreen().findPreference(NetworkSurveyConstants.PROPERTY_MDM_OVERRIDE_KEY);
         if (overridePreference != null) overridePreference.setVisible(true);
+
+        // Regardless of MDM override, upload to 3rd party DBs is disabled if MDM disables it
+        if (!MdmUtils.isExternalDataUploadAllowed(context))
+        {
+            Preference preference = findPreference(NetworkSurveyConstants.UPLOAD_PREFERENCES_GROUP);
+            if (preference != null)
+            {
+                preference.setEnabled(false);
+                preference.setSummary(R.string.upload_disabled_via_mdm);
+            }
+        }
 
         final boolean mdmOverride = sharedPreferences.getBoolean(NetworkSurveyConstants.PROPERTY_MDM_OVERRIDE_KEY, false);
 
@@ -235,7 +247,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
 
         final PreferenceScreen preferenceScreen = getPreferenceScreen();
 
-        final RestrictionsManager restrictionsManager = (RestrictionsManager) requireContext().getSystemService(Context.RESTRICTIONS_SERVICE);
+        final RestrictionsManager restrictionsManager = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
         if (restrictionsManager == null) return;
 
         final Bundle mdmProperties = restrictionsManager.getApplicationRestrictions();

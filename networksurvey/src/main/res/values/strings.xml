@@ -758,4 +758,5 @@ but work independently, so you have full control over how you handle your data.<
     <string name="cancel">Cancel</string>
     <string name="preferences">Preferences</string>
     <string name="uploader_enqueued">An error occurred, will retry later</string>
+    <string name="upload_disabled_via_mdm">External upload has been disabled via MDM</string>
 </resources>
