@@ -3,6 +3,7 @@
 buildscript {
     ext.kotlin_version = '1.9.24'
     ext.hilt_version = '2.52'
+    ext.room_version = '2.6.1'
     ext.useCrashlytics = file("networksurvey/google-services.json").exists()
     repositories {
         google()

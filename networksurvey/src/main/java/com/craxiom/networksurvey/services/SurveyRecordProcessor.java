@@ -317,6 +317,11 @@ public class SurveyRecordProcessor
         cellularDbSink = dbSink;
     }
 
+    public synchronized void removeDbSink()
+    {
+        cellularDbSink = null;
+    }
+
     /**
      * Whenever the UI is visible, we need to pass information to it so it can be displayed to the user.
      *

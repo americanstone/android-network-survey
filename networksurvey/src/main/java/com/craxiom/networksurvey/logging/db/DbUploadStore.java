@@ -29,10 +29,17 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import timber.log.Timber;
+
 public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurveyRecordListener
 {
+    public static final int DISTANCE_MOVED_THRESHOLD = 35;// Earth's radius in meters
+    public static final int EARTH_RADIUS_METERS = 6371000;
     private final SurveyDatabase database;
     private final ExecutorService executorService;
+
+    private volatile double lastLatitude = Double.NaN;
+    private volatile double lastLongitude = Double.NaN;
 
     public DbUploadStore(Context context)
     {
@@ -60,7 +67,7 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
                         break;
                     case GSM:
                         GsmRecordData gsmRecordData = ((GsmRecord) cellularRecordWrapper.cellularRecord).getData();
-                        if (isCompleteGsmRecord(gsmRecordData)) // TODO Add a check to make sure the location has changed by a certain amount
+                        if (shouldWriteGsmRecord(gsmRecordData))
                         {
                             GsmRecordEntity gsmEntity = mapGsmRecordToEntity(gsmRecordData);
                             gsmRecords.add(gsmEntity);
@@ -68,7 +75,7 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
                         break;
                     case CDMA:
                         CdmaRecordData cdmaRecordData = ((CdmaRecord) cellularRecordWrapper.cellularRecord).getData();
-                        if (isCompleteCdmaRecord(cdmaRecordData))
+                        if (shouldWriteCdmaRecord(cdmaRecordData))
                         {
                             CdmaRecordEntity cdmaEntity = mapCdmaRecordToEntity(cdmaRecordData);
                             cdmaRecords.add(cdmaEntity);
@@ -76,7 +83,7 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
                         break;
                     case UMTS:
                         UmtsRecordData umtsRecordData = ((UmtsRecord) cellularRecordWrapper.cellularRecord).getData();
-                        if (isCompleteUmtsRecord(umtsRecordData))
+                        if (shouldWriteUmtsRecord(umtsRecordData))
                         {
                             UmtsRecordEntity umtsEntity = mapUmtsRecordToEntity(umtsRecordData);
                             umtsRecords.add(umtsEntity);
@@ -84,7 +91,7 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
                         break;
                     case LTE:
                         LteRecordData lteRecordData = ((LteRecord) cellularRecordWrapper.cellularRecord).getData();
-                        if (isCompleteLteRecord(lteRecordData))
+                        if (shouldWriteLteRecord(lteRecordData))
                         {
                             LteRecordEntity lteEntity = mapLteRecordToEntity(lteRecordData);
                             lteRecords.add(lteEntity);
@@ -92,7 +99,7 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
                         break;
                     case NR:
                         NrRecordData nrRecordData = ((NrRecord) cellularRecordWrapper.cellularRecord).getData();
-                        if (isCompleteNrRecord(nrRecordData))
+                        if (shouldWriteNrRecord(nrRecordData))
                         {
                             NrRecordEntity nrEntity = mapNrRecordToEntity(nrRecordData);
                             nrRecords.add(nrEntity);
@@ -144,22 +151,37 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
         });
     }
 
-    private boolean isCompleteGsmRecord(GsmRecordData data)
+    private boolean shouldWriteGsmRecord(GsmRecordData data)
     {
         // Yes, I know that 0.0 is a valid location, but I am filtering on 0.0 anyway
         double latitude = data.getLatitude();
         double longitude = data.getLongitude();
         boolean hasLocation = latitude != 0d && longitude != 0d;
 
-        return data.hasMcc() &&
+        // First, check for a valid location
+        if (!hasLocation) return false;
+
+        // Next, check if the record is complete. Neighbor records won't be complete.
+        boolean isCompleteRecord = data.hasMcc() &&
                 data.hasMnc() &&
                 data.hasLac() &&
                 data.hasCi() &&
-                hasLocation &&
                 data.hasSignalStrength();
+        if (!isCompleteRecord) return false;
+
+        // Finally, check if the device has moved far enough
+        if (hasMovedEnough(latitude, longitude, lastLatitude, lastLongitude))
+        {
+            lastLatitude = latitude;
+            lastLongitude = longitude;
+            return true;
+        } else
+        {
+            return false;
+        }
     }
 
-    private boolean isCompleteCdmaRecord(CdmaRecordData data)
+    private boolean shouldWriteCdmaRecord(CdmaRecordData data)
     {
         return false; // Ignore CDMA for now
         /*double latitude = data.getLatitude();
@@ -174,49 +196,116 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
                 data.hasSignalStrength();*/
     }
 
-    private boolean isCompleteUmtsRecord(UmtsRecordData data)
+    private boolean shouldWriteUmtsRecord(UmtsRecordData data)
     {
         // Yes, I know that 0.0 is a valid location, but I am filtering on 0.0 anyway
         double latitude = data.getLatitude();
         double longitude = data.getLongitude();
         boolean hasLocation = latitude != 0d && longitude != 0d;
 
-        return data.hasMcc() &&
+        // First, check for a valid location
+        if (!hasLocation) return false;
+
+        boolean isCompleteRecord = data.hasMcc() &&
                 data.hasMnc() &&
                 data.hasLac() &&
                 data.hasCid() &&
-                hasLocation &&
                 data.hasRscp();
+        if (!isCompleteRecord) return false;
+
+        // Finally, check if the device has moved far enough
+        if (hasMovedEnough(latitude, longitude, lastLatitude, lastLongitude))
+        {
+            lastLatitude = latitude;
+            lastLongitude = longitude;
+            return true;
+        } else
+        {
+            return false;
+        }
     }
 
-    private boolean isCompleteLteRecord(LteRecordData data)
+    private boolean shouldWriteLteRecord(LteRecordData data)
     {
         // Yes, I know that 0.0 is a valid location, but I am filtering on 0.0 anyway
         double latitude = data.getLatitude();
         double longitude = data.getLongitude();
         boolean hasLocation = latitude != 0d && longitude != 0d;
 
-        return data.hasMcc() &&
+        // First, check for a valid location
+        if (!hasLocation) return false;
+
+        boolean isCompleteRecord = data.hasMcc() &&
                 data.hasMnc() &&
                 data.hasTac() &&
                 data.hasEci() &&
-                hasLocation &&
                 data.hasRsrp();
+        if (!isCompleteRecord) return false;
+
+        // Finally, check if the device has moved far enough
+        if (hasMovedEnough(latitude, longitude, lastLatitude, lastLongitude))
+        {
+            lastLatitude = latitude;
+            lastLongitude = longitude;
+            return true;
+        } else
+        {
+            return false;
+        }
     }
 
-    private boolean isCompleteNrRecord(NrRecordData data)
+    private boolean shouldWriteNrRecord(NrRecordData data)
     {
         // Yes, I know that 0.0 is a valid location, but I am filtering on 0.0 anyway
         double latitude = data.getLatitude();
         double longitude = data.getLongitude();
         boolean hasLocation = latitude != 0d && longitude != 0d;
 
-        return data.hasMcc() &&
+        // First, check for a valid location
+        if (!hasLocation) return false;
+
+        boolean isCompleteRecord = data.hasMcc() &&
                 data.hasMnc() &&
                 data.hasTac() &&
                 data.hasNci() &&
-                hasLocation &&
                 data.hasSsRsrp();
+        if (!isCompleteRecord) return false;
+
+        // Finally, check if the device has moved far enough
+        if (hasMovedEnough(latitude, longitude, lastLatitude, lastLongitude))
+        {
+            lastLatitude = latitude;
+            lastLongitude = longitude;
+            return true;
+        } else
+        {
+            return false;
+        }
+    }
+
+    /**
+     * @return True if the record has moved enough to be considered a new location, false otherwise.
+     */
+    public static boolean hasMovedEnough(double latitude, double longitude, double lastLatitude, double lastLongitude)
+    {
+        if (Double.isNaN(lastLatitude) || Double.isNaN(lastLongitude))
+        {
+            return true; // Always allow the first record
+        }
+
+        double dLat = Math.toRadians(latitude - lastLatitude);
+        double dLon = Math.toRadians(longitude - lastLongitude);
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lastLatitude)) * Math.cos(Math.toRadians(latitude)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        double distance = EARTH_RADIUS_METERS * c;
+
+        Timber.i("Distance moved: %s meters", distance); // TODO Delete me
+
+        return distance >= DISTANCE_MOVED_THRESHOLD;
     }
 
     private GsmRecordEntity mapGsmRecordToEntity(GsmRecordData record)
@@ -420,9 +509,9 @@ public class DbUploadStore implements ICellularSurveyRecordListener, IWifiSurvey
         return entity;
     }
 
-    // TODO Call this shutdown method from the survey service
     public void shutdown()
     {
+        database.close();
         executorService.shutdown();
     }
 }

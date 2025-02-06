@@ -125,7 +125,7 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
     private GpsListener primaryLocationListener;
     private ExtraLocationListener gnssLocationListener;
     private ExtraLocationListener networkLocationListener;
-    private DbUploadStore cellularDbUploadStore;
+    private DbUploadStore dbUploadStore;
 
     private DeviceStatusCsvLogger deviceStatusCsvLogger;
     private Looper serviceLooper;
@@ -168,10 +168,10 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
 
         surveyRecordProcessor = new SurveyRecordProcessor(primaryLocationListener, deviceId, context, executorService);
 
-        cellularDbUploadStore = new DbUploadStore(context);
+        dbUploadStore = new DbUploadStore(context);
         if (PreferenceUtils.isUploadEnabled(context))
         {
-            surveyRecordProcessor.addDbSink(cellularDbUploadStore);
+            surveyRecordProcessor.addDbSink(dbUploadStore);
         }
 
         cellularController = new CellularController(this, executorService, serviceLooper, serviceHandler, surveyRecordProcessor);
@@ -355,6 +355,9 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
         wifiController.onDestroy();
         bluetoothController.onDestroy();
         gnssController.onDestroy();
+
+        surveyRecordProcessor.removeDbSink();
+        dbUploadStore.shutdown();
 
         surveyServiceBinder.onDestroy();
         surveyServiceBinder = null;
@@ -1327,10 +1330,10 @@ public class NetworkSurveyService extends Service implements IConnectionStateLis
         final boolean uploadEnabled = PreferenceUtils.isUploadEnabled(this);
         if (uploadEnabled)
         {
-            surveyRecordProcessor.addDbSink(cellularDbUploadStore);
+            surveyRecordProcessor.addDbSink(dbUploadStore);
         } else
         {
-            surveyRecordProcessor.addDbSink(null);
+            surveyRecordProcessor.removeDbSink();
         }
     }
 
