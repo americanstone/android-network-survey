@@ -43,6 +43,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.OutOfQuotaPolicy;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
@@ -1256,6 +1257,7 @@ public class DashboardFragment extends AServiceDataFragment implements LocationL
         OneTimeWorkRequest uploadWorkRequest = new OneTimeWorkRequest.Builder(NsUploaderWorker.class)
                 .addTag(NsUploaderWorker.WORKER_TAG)
                 .setInputData(inputData)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build();
         showUploadProgress(uploadWorkRequest.getId());
 

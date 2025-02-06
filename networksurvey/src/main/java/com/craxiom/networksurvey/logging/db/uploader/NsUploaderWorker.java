@@ -85,8 +85,7 @@ public class NsUploaderWorker extends Worker
         try
         {
             Notification notification = notificationHelper.createNotification(notificationManager);
-            ForegroundInfo foregroundInfo = createForegroundInfo(notification);
-            setForegroundAsync(foregroundInfo);
+            notificationManager.notify(NOTIFICATION_ID, notification);
 
             Timber.d("Starting upload process...");
             // TODO Prevent a second trigger of this doWork somehow (Tower Collector uses an application static variable)
@@ -148,6 +147,9 @@ public class NsUploaderWorker extends Worker
             UploadResultBundle uploadResultBundle = new UploadResultBundle();
             uploadResultBundle.markAllFailure();
             return Result.failure(getResultData(uploadResultBundle));
+        } finally
+        {
+            notificationManager.cancel(NOTIFICATION_ID);
         }
     }
 
